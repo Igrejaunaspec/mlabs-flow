@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <!-- Chosen Palette: Warm Neutral Slate background with Emerald/Indigo accents -->
+    <!-- Application Structure Plan: 
+        A aplicação foi estruturada em 4 visualizações interativas organizadas por abas superiores para proporcionar fluxo contínuo de gestão:
+        1. Visão Geral & Kanban: pipeline interativo de workflow para drag-and-drop/mudança rápida de status.
+        2. Calendário de Agendamento: tabela/grade detalhada com links do Drive, capas, collabs e botão de reagendamento rápido.
+        3. Relatórios & Métricas: gráficos interativos (Chart.js) de alcance e engajamento com análise comparativa.
+        4. Studio de Ideias: brainstorm interativo de posts onde ideias podem ser convertidas diretamente em agendamentos.
+        Esta estrutura resolve a dor de reagendamento rápido, colaboração em equipe e acompanhamento do pipeline de aprovação em uma página.
+    -->
+    <!-- Visualization & Content Choices:
+        - Workflow/Pipeline -> Drag & drop / Click badges (Vanilla JS) -> Facilita avanço de etapa dos posts.
+        - Métricas -> Chart.js Bar & Doughnut charts (Canvas) -> Mostra visualizações e interações por canal. NO SVG / NO Mermaid JS.
+        - Calendário -> Tabela responsiva filtrável com modal de edição rápida -> Permite alterar links do Drive, legendas e collabs em tempo real.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mLabs Flow - Central de Gestão Social Media</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome CSS (Icons alternatives to SVG) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 380px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 340px;
+            }
+        }
+        /* Custom scrollbar for Kanban */
+        .kanban-col::-webkit-scrollbar {
+            width: 6px;
+        }
+        .kanban-col::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Brand / Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="bg-emerald-500 text-slate-900 font-black px-2.5 py-1 rounded-lg text-lg tracking-wider">
+                        mLabs
+                    </div>
+                    <div>
+                        <span class="font-bold text-lg tracking-tight">Flow Manager</span>
+                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded ml-2 hidden sm:inline-block">Instagram & YT Shorts</span>
+                    </div>
+                </div>
+
+                <!-- Global Quick Links & Add Button -->
+                <div class="flex items-center space-x-3 sm:space-x-4">
+                    <button onclick="openModal()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-3 py-2 rounded-lg text-sm flex items-center transition shadow-sm">
+                        <i class="fa-solid font-bold fa-plus mr-1.5"></i> Novo Agendamento
+                    </button>
+                    <div class="h-6 w-px bg-slate-700 hidden sm:block"></div>
+                    <div class="hidden md:flex items-center space-x-3 text-xs text-slate-300">
+                        <a href="#" class="hover:text-emerald-400 flex items-center transition"><i class="fa-solid fa-folder-open mr-1"></i> Drive</a>
+                        <a href="#" class="hover:text-emerald-400 flex items-center transition"><i class="fa-solid fa-palette mr-1"></i> Manual Marca</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Navigation Tabs -->
+        <div class="bg-slate-800 border-t border-slate-700/60">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <nav class="flex space-x-1 sm:space-x-6 overflow-x-auto py-2 text-sm font-medium">
+                    <button onclick="switchTab('kanban')" id="tab-kanban" class="tab-btn active-tab text-emerald-400 border-b-2 border-emerald-400 px-3 py-2 rounded-t flex items-center space-x-2 whitespace-nowrap">
+                        <i class="fa-solid fa-square-poll-vertical"></i>
+                        <span>Workflow & Kanban</span>
+                    </button>
+                    <button onclick="switchTab('calendar')" id="tab-calendar" class="tab-btn text-slate-400 hover:text-slate-200 px-3 py-2 rounded-t flex items-center space-x-2 whitespace-nowrap">
+                        <i class="fa-regular fa-calendar-days"></i>
+                        <span>Calendário Editorial</span>
+                    </button>
+                    <button onclick="switchTab('analytics')" id="tab-analytics" class="tab-btn text-slate-400 hover:text-slate-200 px-3 py-2 rounded-t flex items-center space-x-2 whitespace-nowrap">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <span>Relatórios & Métricas</span>
+                    </button>
+                    <button onclick="switchTab('ideas')" id="tab-ideas" class="tab-btn text-slate-400 hover:text-slate-200 px-3 py-2 rounded-t flex items-center space-x-2 whitespace-nowrap">
+                        <i class="fa-solid fa-lightbulb"></i>
+                        <span>Studio de Ideias</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Top Summary Bar (KPIs) -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Atrasados / Pendentes</p>
+                    <p id="kpi-pending" class="text-2xl font-bold text-rose-600 mt-1">1</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-lg">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Em Aprovação</p>
+                    <p id="kpi-approval" class="text-2xl font-bold text-amber-500 mt-1">2</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center font-bold text-lg">
+                    <i class="fa-regular fa-clock"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Agendados na Semana</p>
+                    <p id="kpi-scheduled" class="text-2xl font-bold text-emerald-600 mt-1">4</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg">
+                    <i class="fa-regular fa-circle-check"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Meta Semanal</p>
+                    <p class="text-sm font-semibold text-slate-700 mt-1">5 Reels / 3 Shorts</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-lg">
+                    <i class="fa-solid fa-bullseye"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 1: WORKFLOW & KANBAN VIEW -->
+        <section id="view-kanban" class="view-section">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-diagram-project text-indigo-600 mr-2"></i> Pipeline de Gestão do Conteúdo
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Visualize a esteira de produção. Clique nos cards para editar detalhes, aprovar ou remanejar datas.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs font-semibold text-slate-500">Filtrar Canal:</span>
+                        <select id="kanban-filter-channel" onchange="renderKanban()" class="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-slate-50 focus:ring-2 focus:ring-indigo-500">
+                            <option value="all">Todos os Canais</option>
+                            <option value="IG - Reels">Instagram Reels</option>
+                            <option value="YT - Shorts">YouTube Shorts</option>
+                            <option value="IG - Carrossel">Instagram Carrossel</option>
+                            <option value="YT - Vídeo Longo">YouTube Longo</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kanban Columns Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 min-h-[500px]">
+                
+                <!-- Col 1: Briefing -->
+                <div class="bg-slate-100 rounded-xl p-3 border border-slate-200 flex flex-col">
+                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
+                        <span class="text-xs font-bold text-slate-700 flex items-center">💡 Briefing / Ideia</span>
+                        <span id="count-Briefing" class="text-xs bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div id="col-Briefing" class="kanban-col space-y-3 flex-grow overflow-y-auto max-h-[600px] pr-1"></div>
+                </div>
+
+                <!-- Col 2: Criação -->
+                <div class="bg-blue-50/60 rounded-xl p-3 border border-blue-100 flex flex-col">
+                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-blue-100">
+                        <span class="text-xs font-bold text-blue-800 flex items-center">🛠️ Em Criação</span>
+                        <span id="count-Criação" class="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div id="col-Criação" class="kanban-col space-y-3 flex-grow overflow-y-auto max-h-[600px] pr-1"></div>
+                </div>
+
+                <!-- Col 3: Em Aprovação -->
+                <div class="bg-amber-50/60 rounded-xl p-3 border border-amber-100 flex flex-col">
+                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-amber-100">
+                        <span class="text-xs font-bold text-amber-800 flex items-center">🔎 Em Aprovação</span>
+                        <span id="count-Em Aprovação" class="text-xs bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div id="col-Em Aprovação" class="kanban-col space-y-3 flex-grow overflow-y-auto max-h-[600px] pr-1"></div>
+                </div>
+
+                <!-- Col 4: Ajustes -->
+                <div class="bg-rose-50/60 rounded-xl p-3 border border-rose-100 flex flex-col">
+                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-rose-100">
+                        <span class="text-xs font-bold text-rose-800 flex items-center">✍️ Em Ajustes</span>
+                        <span id="count-Ajustes" class="text-xs bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div id="col-Ajustes" class="kanban-col space-y-3 flex-grow overflow-y-auto max-h-[600px] pr-1"></div>
+                </div>
+
+                <!-- Col 5: Agendado -->
+                <div class="bg-emerald-50/60 rounded-xl p-3 border border-emerald-100 flex flex-col">
+                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-emerald-100">
+                        <span class="text-xs font-bold text-emerald-800 flex items-center">📅 Agendado</span>
+                        <span id="count-Agendado" class="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div id="col-Agendado" class="kanban-col space-y-3 flex-grow overflow-y-auto max-h-[600px] pr-1"></div>
+                </div>
+
+                <!-- Col 6: Publicado -->
+                <div class="bg-purple-50/60 rounded-xl p-3 border border-purple-100 flex flex-col">
+                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-purple-100">
+                        <span class="text-xs font-bold text-purple-800 flex items-center">🚀 Publicado</span>
+                        <span id="count-Publicado" class="text-xs bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div id="col-Publicado" class="kanban-col space-y-3 flex-grow overflow-y-auto max-h-[600px] pr-1"></div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECTION 2: EDITORIAL CALENDAR & SCHEDULE TABLE -->
+        <section id="view-calendar" class="view-section hidden">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                            <i class="fa-regular fa-calendar-check text-emerald-600 mr-2"></i> Calendário & Matriz de Postagens
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">Gerencie horários precisos, acesse links de arquivos no Drive e aprove conteúdos da equipe.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <input type="text" id="calendar-search" oninput="renderCalendarTable()" placeholder="Buscar legenda ou responsável..." class="text-xs border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-emerald-500">
+                        <button onclick="openModal()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition">
+                            <i class="fa-solid fa-plus mr-1"></i> Adicionar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Container -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                                <th class="p-3.5">Data & Hora</th>
+                                <th class="p-3.5">Status</th>
+                                <th class="p-3.5">Canal / Formato</th>
+                                <th class="p-3.5">Responsável</th>
+                                <th class="p-3.5">Mídias & Drive</th>
+                                <th class="p-3.5">Legenda & Collabs</th>
+                                <th class="p-3.5">Aprovação / Feedback</th>
+                                <th class="p-3.5 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="calendar-table-body" class="divide-y divide-slate-200 text-xs text-slate-700">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: ANALYTICS & REPORTS -->
+        <section id="view-analytics" class="view-section hidden">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-chart-pie text-indigo-600 mr-2"></i> Relatórios de Desempenho (7 Dias Aposta)
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">Análise dos resultados reais obtidos para otimização contínua das estratégias.</p>
+                    </div>
+                    <div class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold">
+                        <i class="fa-solid fa-circle-info mr-1"></i> Atualizado semanalmente
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Chart 1: Visualizações por Post -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-800 mb-1">Visualizações por Publicação</h3>
+                    <p class="text-xs text-slate-500 mb-4">Alcance total de público nos primeiros 7 dias após publicação.</p>
+                    <div class="chart-container">
+                        <canvas id="viewsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Distribuição de Engajamento -->
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-800 mb-1">Interações & Engajamento</h3>
+                    <p class="text-xs text-slate-500 mb-4">Proporção de Curtidas, Comentários e Compartilhamentos.</p>
+                    <div class="chart-container">
+                        <canvas id="engagementChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Table Insights -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+                <h3 class="text-sm font-bold text-slate-800 mb-3">Conclusões e Insights Práticos</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-200 bg-slate-50 font-bold text-slate-500 uppercase tracking-wider">
+                                <th class="p-3">Post (Tema)</th>
+                                <th class="p-3">Data</th>
+                                <th class="p-3">Views</th>
+                                <th class="p-3">Curtidas</th>
+                                <th class="p-3">Comentários</th>
+                                <th class="p-3">Compartilhamentos</th>
+                                <th class="p-3">Insight / Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analytics-table-body" class="divide-y divide-slate-200">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: BRAINSTORM STUDIO -->
+        <section id="view-ideas" class="view-section hidden">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-2"></i> Studio de Ideias & Brainstorm
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">Banco de ideias sem data definida. O que for aprovado pode ser movido direto para o calendário!</p>
+                    </div>
+                    <button onclick="openIdeaModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg transition flex items-center">
+                        <i class="fa-solid fa-lightbulb mr-1"></i> Nova Ideia
+                    </button>
+                </div>
+            </div>
+
+            <!-- Idea Cards List -->
+            <div id="ideas-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Populated via JS -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8 text-xs text-slate-500 text-center">
+        <div class="max-w-7xl mx-auto px-4">
+            <p>mLabs Flow Manager — Painel Colaborativo para Gestão de Instagram & YT Shorts.</p>
+        </div>
+    </footer>
+
+    <!-- MODAL: ADD/EDIT POST -->
+    <div id="postModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-200">
+            <div class="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50 rounded-t-2xl">
+                <h3 id="modalTitle" class="font-bold text-slate-800 text-base">Novo Agendamento</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <form id="postForm" onsubmit="savePost(event)" class="p-5 space-y-4">
+                <input type="hidden" id="postId">
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Data e Hora *</label>
+                        <input type="datetime-local" id="postDatetime" required class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Canal e Formato *</label>
+                        <select id="postChannel" required class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500">
+                            <option value="IG - Reels">IG - Reels</option>
+                            <option value="YT - Shorts">YT - Shorts</option>
+                            <option value="IG - Carrossel">IG - Carrossel</option>
+                            <option value="YT - Vídeo Longo">YT - Vídeo Longo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Status do Workflow *</label>
+                        <select id="postStatus" required class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500">
+                            <option value="Briefing">💡 Briefing / Ideia</option>
+                            <option value="Criação">🛠️ Criação</option>
+                            <option value="Em Aprovação">🔎 Em Aprovação</option>
+                            <option value="Ajustes">✍️ Ajustes</option>
+                            <option value="Agendado">📅 Agendado</option>
+                            <option value="Publicado">🚀 Publicado</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Responsável *</label>
+                        <input type="text" id="postResponsible" placeholder="Ex: João, Maria, Equipe" required class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Link da Mídia (Google Drive / Canva)</label>
+                    <input type="url" id="postDrive" placeholder="https://drive.google.com/..." class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Link da Capa (Thumbnail)</label>
+                        <input type="url" id="postCover" placeholder="https://..." class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Collabs / Parceiros (@)</label>
+                        <input type="text" id="postCollab" placeholder="@marca1, @especialista" class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Legenda & Hashtags</label>
+                    <textarea id="postCaption" rows="3" placeholder="Escreva a legenda e hashtags aqui..." class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Status de Aprovação / Comentários</label>
+                    <input type="text" id="postApproval" placeholder="Ex: ✅ Aprovado por Gestor ou ⏳ Aguardando revisão" class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500">
+                </div>
+
+                <div class="pt-3 border-t border-slate-200 flex items-center justify-end space-x-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-bold transition">Salvar Postagem</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD IDEA -->
+    <div id="ideaModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full border border-slate-200 p-5">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+                <h3 class="font-bold text-slate-800 text-base flex items-center">
+                    <i class="fa-solid fa-lightbulb text-amber-500 mr-2"></i> Nova Ideia no Studio
+                </h3>
+                <button onclick="closeIdeaModal()" class="text-slate-400 hover:text-slate-600 p-1 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form onsubmit="saveIdea(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Título da Ideia *</label>
+                    <input type="text" id="ideaTitle" required placeholder="Ex: Trends, Collab, React..." class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Descrição / Referências</label>
+                    <textarea id="ideaDesc" rows="3" placeholder="Detalhes, links de referência, áudio em alta..." class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Sugerido para</label>
+                    <select id="ideaChannel" class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500">
+                        <option value="IG - Reels">IG - Reels</option>
+                        <option value="YT - Shorts">YT - Shorts</option>
+                        <option value="Qualquer Formato">Qualquer Formato</option>
+                    </select>
+                </div>
+                <div class="pt-3 border-t border-slate-200 flex justify-end space-x-2">
+                    <button type="button" onclick="closeIdeaModal()" class="px-3 py-2 text-xs border rounded-lg">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 text-xs bg-amber-500 hover:bg-amber-600 font-bold rounded-lg text-slate-950">Adicionar Ideia</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Data Store (Pre-populated with Report Data)
+        let posts = [
+            {
+                id: 1,
+                datetime: '2026-09-10T11:30',
+                status: 'Agendado',
+                channel: 'IG - Reels',
+                responsible: 'João',
+                driveLink: 'https://drive.google.com/file/d/reels-1',
+                coverLink: 'https://canva.com/design/capa1',
+                collab: '@parceiro1, @parceiro2',
+                caption: 'Comece com um gancho forte... #marketing #dicas #socialmedia',
+                approval: '✅ Aprovado por Gestor',
+                views: 0, likes: 0, comments: 0, shares: 0, insight: ''
+            },
+            {
+                id: 2,
+                datetime: '2026-09-12T18:00',
+                status: 'Em Aprovação',
+                channel: 'YT - Shorts',
+                responsible: 'Maria',
+                driveLink: 'https://drive.google.com/file/d/shorts-1',
+                coverLink: 'https://canva.com/design/capa2',
+                collab: '',
+                caption: 'Tudo o que você precisa saber sobre X. Link na bio!',
+                approval: '⏳ Aguardando revisão do cliente',
+                views: 0, likes: 0, comments: 0, shares: 0, insight: ''
+            },
+            {
+                id: 3,
+                datetime: '2026-09-15T12:00',
+                status: 'Ajustes',
+                channel: 'IG - Carrossel',
+                responsible: 'Pedro',
+                driveLink: 'https://drive.google.com/file/d/carrossel-1',
+                coverLink: 'https://canva.com/design/capa3',
+                collab: '',
+                caption: 'Deslize para o lado para ver o passo a passo completo do nosso método...',
+                approval: '❌ Trocar a fonte da capa',
+                views: 0, likes: 0, comments: 0, shares: 0, insight: ''
+            },
+            {
+                id: 4,
+                datetime: '2026-09-18T19:30',
+                status: 'Criação',
+                channel: 'IG - Reels',
+                responsible: 'Equipe',
+                driveLink: 'https://drive.google.com/file/d/pasta-base',
+                coverLink: '',
+                collab: '',
+                caption: '[Rascunho da Copy aqui]',
+                approval: 'Pendente',
+                views: 0, likes: 0, comments: 0, shares: 0, insight: ''
+            },
+            {
+                id: 5,
+                datetime: '2026-09-20T14:00',
+                status: 'Briefing',
+                channel: 'YT - Vídeo Longo',
+                responsible: 'João',
+                driveLink: '',
+                coverLink: '',
+                collab: '@especialista',
+                caption: 'Análise detalhada do algoritmo em 2026...',
+                approval: 'Pendente',
+                views: 0, likes: 0, comments: 0, shares: 0, insight: ''
+            },
+            {
+                id: 6,
+                datetime: '2026-09-01T10:00',
+                status: 'Publicado',
+                channel: 'IG - Reels',
+                responsible: 'Maria',
+                driveLink: 'https://drive.google.com/file/d/pub-1',
+                coverLink: '',
+                collab: '',
+                caption: 'Bastidores da nossa agência!',
+                approval: '✅ Publicado',
+                views: 12500, likes: 840, comments: 45, shares: 120,
+                insight: 'Formato dinâmico funciona, focar mais nos bastidores reais.'
+            },
+            {
+                id: 7,
+                datetime: '2026-09-03T17:00',
+                status: 'Publicado',
+                channel: 'YT - Shorts',
+                responsible: 'Pedro',
+                driveLink: 'https://drive.google.com/file/d/pub-2',
+                coverLink: '',
+                collab: '',
+                caption: 'Dica Rápida de Edição em 30s',
+                approval: '✅ Publicado',
+                views: 4200, likes: 300, comments: 12, shares: 15,
+                insight: 'Título não chamou tanta atenção, melhorar tomadas iniciais.'
+            }
+        ];
+
+        let ideas = [
+            { id: 1, title: 'Áudio em Alta (Trend)', desc: 'Gravar a equipe fazendo a transição de corte rápido.', channel: 'IG - Reels' },
+            { id: 2, title: 'Collab Especialista', desc: 'Convidar o @especialista para um react do nosso produto.', channel: 'Qualquer Formato' },
+            { id: 3, title: 'Tira-Dúvidas da Caixinha', desc: 'Fazer um Shorts respondendo a pergunta da semana passada.', channel: 'YT - Shorts' },
+            { id: 4, title: 'Meme Corporativo', desc: 'Adaptar o meme do momento para a nossa rotina.', channel: 'IG - Reels' }
+        ];
+
+        // Status Map
+        const statuses = ['Briefing', 'Criação', 'Em Aprovação', 'Ajustes', 'Agendado', 'Publicado'];
+
+        // Chart Instances
+        let viewsChartInstance = null;
+        let engagementChartInstance = null;
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            renderKanban();
+            renderCalendarTable();
+            renderAnalytics();
+            renderIdeas();
+            updateKPIs();
+        });
+
+        // Tab Navigation Logic
+        function switchTab(tabName) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-emerald-400', 'border-b-2', 'border-emerald-400');
+                btn.classList.add('text-slate-400');
+            });
+
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            activeBtn.classList.remove('text-slate-400');
+            activeBtn.classList.add('text-emerald-400', 'border-b-2', 'border-emerald-400');
+
+            if (tabName === 'analytics') {
+                renderAnalyticsCharts();
+            }
+        }
+
+        // KPI Counter Updates
+        function updateKPIs() {
+            const pending = posts.filter(p => p.status === 'Ajustes' || p.status === 'Briefing').length;
+            const approval = posts.filter(p => p.status === 'Em Aprovação').length;
+            const scheduled = posts.filter(p => p.status === 'Agendado').length;
+
+            document.getElementById('kpi-pending').innerText = pending;
+            document.getElementById('kpi-approval').innerText = approval;
+            document.getElementById('kpi-scheduled').innerText = scheduled;
+        }
+
+        // Render Kanban Board
+        function renderKanban() {
+            const filterChannel = document.getElementById('kanban-filter-channel').value;
+            
+            statuses.forEach(st => {
+                const col = document.getElementById(`col-${st}`);
+                col.innerHTML = '';
+
+                let filtered = posts.filter(p => p.status === st);
+                if (filterChannel !== 'all') {
+                    filtered = filtered.filter(p => p.channel === filterChannel);
+                }
+
+                document.getElementById(`count-${st}`).innerText = filtered.length;
+
+                filtered.forEach(post => {
+                    const dateObj = new Date(post.datetime);
+                    const formattedDate = isNaN(dateObj) ? 'A definir' : `${dateObj.getDate().toString().padStart(2,'0')}/${(dateObj.getMonth()+1).toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
+
+                    let badgeColor = 'bg-slate-200 text-slate-800';
+                    if (post.channel.includes('IG')) badgeColor = 'bg-gradient-to-r from-pink-500 to-purple-500 text-white';
+                    if (post.channel.includes('YT')) badgeColor = 'bg-red-600 text-white';
+
+                    const card = document.createElement('div');
+                    card.className = 'bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition cursor-pointer relative group';
+                    card.onclick = () => openModal(post.id);
+
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded ${badgeColor}">${post.channel}</span>
+                            <span class="text-[10px] text-slate-400 font-medium">${formattedDate}</span>
+                        </div>
+                        <p class="text-xs font-semibold text-slate-800 line-clamp-2 mb-2">${post.caption || 'Sem legenda inserida'}</p>
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-500">
+                            <span class="flex items-center"><i class="fa-regular fa-user mr-1 text-slate-400"></i> ${post.responsible}</span>
+                            ${post.driveLink ? '<span class="text-emerald-600"><i class="fa-solid fa-link"></i> Mídia</span>' : ''}
+                        </div>
+                        <div class="mt-2 flex items-center justify-end space-x-1 opacity-90">
+                            <button onclick="event.stopPropagation(); changePostStatus(${post.id}, 'prev')" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded" title="Voltar Status">←</button>
+                            <button onclick="event.stopPropagation(); changePostStatus(${post.id}, 'next')" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded" title="Avançar Status">→</button>
+                        </div>
+                    `;
+                    col.appendChild(card);
+                });
+            });
+        }
+
+        // Change Status Shortcut (Kanban arrows)
+        function changePostStatus(id, direction) {
+            const post = posts.find(p => p.id === id);
+            if (!post) return;
+            let currentIndex = statuses.indexOf(post.status);
+            if (direction === 'next' && currentIndex < statuses.length - 1) {
+                post.status = statuses[currentIndex + 1];
+            } else if (direction === 'prev' && currentIndex > 0) {
+                post.status = statuses[currentIndex - 1];
+            }
+            renderKanban();
+            renderCalendarTable();
+            updateKPIs();
+        }
+
+        // Render Calendar Table
+        function renderCalendarTable() {
+            const tbody = document.getElementById('calendar-table-body');
+            const search = document.getElementById('calendar-search').value.toLowerCase();
+            tbody.innerHTML = '';
+
+            let filtered = posts.filter(p => 
+                p.caption.toLowerCase().includes(search) || 
+                p.responsible.toLowerCase().includes(search) ||
+                p.channel.toLowerCase().includes(search)
+            );
+
+            filtered.forEach(post => {
+                const dateObj = new Date(post.datetime);
+                const formattedDate = isNaN(dateObj) ? 'A definir' : `${dateObj.getDate().toString().padStart(2,'0')}/${(dateObj.getMonth()+1).toString().padStart(2,'0')}/2026 - ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
+
+                let statusBadge = 'bg-slate-100 text-slate-700';
+                if (post.status === 'Agendado') statusBadge = 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+                if (post.status === 'Em Aprovação') statusBadge = 'bg-amber-100 text-amber-800 border border-amber-200';
+                if (post.status === 'Ajustes') statusBadge = 'bg-rose-100 text-rose-800 border border-rose-200';
+                if (post.status === 'Publicado') statusBadge = 'bg-purple-100 text-purple-800 border border-purple-200';
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+                tr.innerHTML = `
+                    <td class="p-3.5 font-semibold text-slate-800 whitespace-nowrap">${formattedDate}</td>
+                    <td class="p-3.5"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${statusBadge}">${post.status}</span></td>
+                    <td class="p-3.5 font-medium">${post.channel}</td>
+                    <td class="p-3.5">${post.responsible}</td>
+                    <td class="p-3.5">
+                        <div class="flex flex-col space-y-1 text-[11px]">
+                            ${post.driveLink ? `<a href="${post.driveLink}" target="_blank" class="text-emerald-600 hover:underline flex items-center"><i class="fa-solid fa-video mr-1"></i> Vídeo Drive</a>` : '<span class="text-slate-400">Sem vídeo</span>'}
+                            ${post.coverLink ? `<a href="${post.coverLink}" target="_blank" class="text-indigo-600 hover:underline flex items-center"><i class="fa-solid fa-image mr-1"></i> Capa</a>` : ''}
+                        </div>
+                    </td>
+                    <td class="p-3.5 max-w-xs">
+                        <p class="truncate font-medium text-slate-800" title="${post.caption}">${post.caption || '-'}</p>
+                        ${post.collab ? `<p class="text-[10px] text-indigo-600 font-semibold mt-0.5">Collab: ${post.collab}</p>` : ''}
+                    </td>
+                    <td class="p-3.5 text-[11px]">${post.approval || '-'}</td>
+                    <td class="p-3.5 text-right whitespace-nowrap">
+                        <button onclick="openModal(${post.id})" class="text-indigo-600 hover:text-indigo-800 p-1.5 font-semibold">Editar / Reagendar</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Render Analytics Tab
+        function renderAnalytics() {
+            const tbody = document.getElementById('analytics-table-body');
+            tbody.innerHTML = '';
+
+            const published = posts.filter(p => p.status === 'Publicado' || p.views > 0);
+
+            published.forEach(post => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50';
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-800">${post.channel}: ${post.caption.substring(0, 25)}...</td>
+                    <td class="p-3">${post.datetime.split('T')[0]}</td>
+                    <td class="p-3 font-bold text-indigo-600">${post.views.toLocaleString()}</td>
+                    <td class="p-3 text-emerald-600 font-semibold">${post.likes}</td>
+                    <td class="p-3 text-slate-700">${post.comments}</td>
+                    <td class="p-3 text-slate-700">${post.shares}</td>
+                    <td class="p-3 text-slate-600 italic">${post.insight || 'Sem observações'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Render Chart.js Visualizations
+        function renderAnalyticsCharts() {
+            const published = posts.filter(p => p.views > 0);
+            const labels = published.map(p => `${p.channel} (${p.datetime.split('T')[0]})`);
+            const viewsData = published.map(p => p.views);
+
+            // Chart 1: Bar Chart Views
+            const ctxViews = document.getElementById('viewsChart').getContext('2d');
+            if (viewsChartInstance) viewsChartInstance.destroy();
+
+            viewsChartInstance = new Chart(ctxViews, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Visualizações Totais',
+                        data: viewsData,
+                        backgroundColor: ['rgba(99, 102, 241, 0.85)', 'rgba(16, 185, 129, 0.85)'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Chart 2: Engagement Breakdown (Doughnut)
+            const totalLikes = published.reduce((acc, p) => acc + p.likes, 0);
+            const totalComments = published.reduce((acc, p) => acc + p.comments, 0);
+            const totalShares = published.reduce((acc, p) => acc + p.shares, 0);
+
+            const ctxEng = document.getElementById('engagementChart').getContext('2d');
+            if (engagementChartInstance) engagementChartInstance.destroy();
+
+            engagementChartInstance = new Chart(ctxEng, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Curtidas', 'Comentários', 'Compartilhamentos'],
+                    datasets: [{
+                        data: [totalLikes, totalComments, totalShares],
+                        backgroundColor: ['#10b981', '#6366f1', '#f59e0b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        // Render Ideas Studio
+        function renderIdeas() {
+            const container = document.getElementById('ideas-container');
+            container.innerHTML = '';
+
+            ideas.forEach(idea => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:border-amber-300 transition';
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">${idea.channel}</span>
+                            <i class="fa-solid fa-lightbulb text-amber-400"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-sm mb-1">${idea.title}</h4>
+                        <p class="text-xs text-slate-600 mb-4">${idea.desc}</p>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+                        <button onclick="convertIdeaToPost(${idea.id})" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center">
+                            <i class="fa-solid fa-calendar-plus mr-1"></i> Agendar Post
+                        </button>
+                        <button onclick="deleteIdea(${idea.id})" class="text-xs text-slate-400 hover:text-rose-500">
+                            <i class="fa-regular fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Convert Idea to Active Post
+        function convertIdeaToPost(ideaId) {
+            const idea = ideas.find(i => i.id === ideaId);
+            if (!idea) return;
+
+            const newPost = {
+                id: Date.now(),
+                datetime: '2026-09-25T14:00',
+                status: 'Briefing',
+                channel: idea.channel === 'Qualquer Formato' ? 'IG - Reels' : idea.channel,
+                responsible: 'Equipe',
+                driveLink: '',
+                coverLink: '',
+                collab: '',
+                caption: `${idea.title}: ${idea.desc}`,
+                approval: 'Veio do Studio de Ideias',
+                views: 0, likes: 0, comments: 0, shares: 0, insight: ''
+            };
+
+            posts.push(newPost);
+            ideas = ideas.filter(i => i.id !== ideaId);
+
+            renderIdeas();
+            renderKanban();
+            renderCalendarTable();
+            updateKPIs();
+            switchTab('kanban');
+            alert('Ideia convertida em Post no Workflow com sucesso!');
+        }
+
+        function deleteIdea(id) {
+            ideas = ideas.filter(i => i.id !== id);
+            renderIdeas();
+        }
+
+        // Modal Handlers
+        function openModal(postId = null) {
+            const modal = document.getElementById('postModal');
+            const form = document.getElementById('postForm');
+            form.reset();
+
+            if (postId) {
+                const post = posts.find(p => p.id === postId);
+                if (post) {
+                    document.getElementById('modalTitle').innerText = 'Editar Agendamento';
+                    document.getElementById('postId').value = post.id;
+                    document.getElementById('postDatetime').value = post.datetime;
+                    document.getElementById('postChannel').value = post.channel;
+                    document.getElementById('postStatus').value = post.status;
+                    document.getElementById('postResponsible').value = post.responsible;
+                    document.getElementById('postDrive').value = post.driveLink || '';
+                    document.getElementById('postCover').value = post.coverLink || '';
+                    document.getElementById('postCollab').value = post.collab || '';
+                    document.getElementById('postCaption').value = post.caption || '';
+                    document.getElementById('postApproval').value = post.approval || '';
+                }
+            } else {
+                document.getElementById('modalTitle').innerText = 'Novo Agendamento';
+                document.getElementById('postId').value = '';
+                document.getElementById('postDatetime').value = '2026-09-20T12:00';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('postModal').classList.add('hidden');
+        }
+
+        function openIdeaModal() {
+            document.getElementById('ideaModal').classList.remove('hidden');
+        }
+
+        function closeIdeaModal() {
+            document.getElementById('ideaModal').classList.add('hidden');
+        }
+
+        // Save Post (Create / Update)
+        function savePost(e) {
+            e.preventDefault();
+            const id = document.getElementById('postId').value;
+            const datetime = document.getElementById('postDatetime').value;
+            const channel = document.getElementById('postChannel').value;
+            const status = document.getElementById('postStatus').value;
+            const responsible = document.getElementById('postResponsible').value;
+            const driveLink = document.getElementById('postDrive').value;
+            const coverLink = document.getElementById('postCover').value;
+            const collab = document.getElementById('postCollab').value;
+            const caption = document.getElementById('postCaption').value;
+            const approval = document.getElementById('postApproval').value;
+
+            if (id) {
+                // Edit
+                const post = posts.find(p => p.id === parseInt(id));
+                if (post) {
+                    post.datetime = datetime;
+                    post.channel = channel;
+                    post.status = status;
+                    post.responsible = responsible;
+                    post.driveLink = driveLink;
+                    post.coverLink = coverLink;
+                    post.collab = collab;
+                    post.caption = caption;
+                    post.approval = approval;
+                }
+            } else {
+                // New
+                const newPost = {
+                    id: Date.now(),
+                    datetime,
+                    channel,
+                    status,
+                    responsible,
+                    driveLink,
+                    coverLink,
+                    collab,
+                    caption,
+                    approval,
+                    views: 0, likes: 0, comments: 0, shares: 0, insight: ''
+                };
+                posts.push(newPost);
+            }
+
+            closeModal();
+            renderKanban();
+            renderCalendarTable();
+            updateKPIs();
+        }
+
+        // Save Idea
+        function saveIdea(e) {
+            e.preventDefault();
+            const title = document.getElementById('ideaTitle').value;
+            const desc = document.getElementById('ideaDesc').value;
+            const channel = document.getElementById('ideaChannel').value;
+
+            ideas.push({
+                id: Date.now(),
+                title,
+                desc,
+                channel
+            });
+
+            closeIdeaModal();
+            renderIdeas();
+        }
+    </script>
+</body>
+</html>
