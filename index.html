@@ -361,6 +361,13 @@
                 <button type="button" id="ytConnectBtn" onclick="connectYoutube()" class="w-full text-[11px] font-bold py-1.5 rounded-lg transition hidden" style="background:var(--accent); color:#04241a">Conectar YouTube</button>
                 <button type="button" id="ytDisconnectBtn" onclick="disconnectYoutube()" class="w-full text-[11px] font-semibold py-1.5 rounded-lg border transition hover:bg-black/5 hidden" style="border-color:var(--card-border); color:var(--text-secondary)">Desconectar</button>
             </div>
+            <div class="rounded-lg p-3 border mt-2" style="background:var(--list-bg); border-color:var(--card-border)">
+                <div class="flex items-center gap-2 mb-2">
+                    <svg class="icon w-4 h-4 shrink-0" viewBox="0 0 24 24"><defs><radialGradient id="igGradMenu" cx="30%" cy="107%" r="150%"><stop offset="0%" stop-color="#fdf497"/><stop offset="5%" stop-color="#fdf497"/><stop offset="45%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient></defs><rect width="24" height="24" rx="6" fill="url(#igGradMenu)"/><path d="M12 7.4a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 0 0 0-9.2zm0 7.6a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm4.8-7.8a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0z" fill="#fff"/></svg>
+                    <span class="font-semibold" style="color:var(--text-primary)">Instagram</span>
+                </div>
+                <p id="igStatusText" class="text-[11px]" style="color:var(--text-secondary)">Verificando conexão...</p>
+            </div>
         </div>
 
         <div class="pt-4 border-t text-xs" style="border-color:var(--card-border); color:var(--text-secondary)">
@@ -708,6 +715,27 @@
                                 <p id="ytPublishStatus" class="text-[11px]"></p>
                             </div>
                         </div>
+
+                        <div id="instagramPublishSection" class="hidden rounded-lg p-3 border" style="background:var(--list-bg); border-color:var(--card-border)">
+                            <div class="flex items-center gap-1.5 mb-2">
+                                <svg class="icon w-4 h-4 shrink-0" viewBox="0 0 24 24"><defs><radialGradient id="igGradCard" cx="30%" cy="107%" r="150%"><stop offset="0%" stop-color="#fdf497"/><stop offset="5%" stop-color="#fdf497"/><stop offset="45%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient></defs><rect width="24" height="24" rx="6" fill="url(#igGradCard)"/><path d="M12 7.4a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 0 0 0-9.2zm0 7.6a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm4.8-7.8a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0z" fill="#fff"/></svg>
+                                <span class="text-xs font-bold" style="color:var(--text-primary)">Publicar no Instagram</span>
+                            </div>
+                            <div id="igPublishNotConnected" class="hidden text-[11px]" style="color:var(--text-secondary)">Instagram não está configurado no servidor (fale com quem cuida da integração).</div>
+                            <div id="igPublishControls" class="hidden space-y-2">
+                                <div>
+                                    <label class="block text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Mídia a publicar</label>
+                                    <select id="igMediaAttachment" onchange="updateInstagramMediaTypeOptions()" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)"></select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Tipo de publicação</label>
+                                    <select id="igMediaType" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)"></select>
+                                </div>
+                                <p class="text-[10px]" style="color:var(--text-secondary)">Usa a legenda escrita acima em "Legenda / Descrição". A mídia é enviada para um armazenamento gratuito (Cloudflare R2) só para o Instagram conseguir buscá-la — ela some de lá automaticamente depois.</p>
+                                <button type="button" onclick="publishToInstagram()" id="igPublishBtn" class="w-full text-xs font-bold py-2 rounded-lg transition" style="background:#d6249f; color:#fff">Publicar no Instagram</button>
+                                <p id="igPublishStatus" class="text-[11px]"></p>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- RIGHT: add + actions -->
@@ -978,6 +1006,10 @@
         const YT_API_BASE = 'https://mlabsflow-youtube.diretor-unasp.workers.dev';
         const YT_USER_ID = 'default';
         let ytStatus = { connected: false, channelTitle: null };
+
+        // ---------- Instagram publishing (same free-tier Worker + Graph API) ----------
+        const IG_API_BASE = YT_API_BASE; // same Worker handles both integrations
+        let igStatus = { connected: false, username: null };
 
         // ---------- Google Drive picker (pick a video already in Drive, no manual upload) ----------
         // Free tier: Google Drive API + Google Picker API, both free forever, no charge.
@@ -1590,6 +1622,8 @@
 
             // YouTube connection: check status + handle the redirect back from Google
             checkYoutubeStatus();
+            // Instagram connection: server-side account, just show whether it's configured
+            checkInstagramStatus();
             // Google Drive picker (video already in Drive) — loads its scripts lazily
             // and only shows the button if they load successfully (see function).
             initGoogleDriveIntegration();
@@ -2264,6 +2298,7 @@
             updateCoverPreview();
             updateModalCover();
             updateYoutubePublishSection();
+            updateInstagramPublishSection();
             modal.classList.remove('hidden');
             setTimeout(() => titleInput.focus(), 30);
         }
@@ -2344,12 +2379,14 @@
             e.target.value = '';
             renderAttachmentsList();
             updateYoutubePublishSection();
+            updateInstagramPublishSection();
         }
 
         function removeAttachment(i) {
             currentAttachments.splice(i, 1);
             renderAttachmentsList();
             updateYoutubePublishSection();
+            updateInstagramPublishSection();
         }
 
         function renderAttachmentsList() {
@@ -2582,6 +2619,157 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Enviar vídeo para o YouTube';
+            }
+        }
+
+        // ---------- Instagram: connection status (Menu do Quadro) ----------
+        // The Instagram account is a single server-side connection (set up once
+        // by whoever runs the Worker) — unlike YouTube there's no per-user
+        // connect/disconnect button, just a status readout.
+        async function checkInstagramStatus() {
+            const textEl = document.getElementById('igStatusText');
+            try {
+                const res = await fetch(`${IG_API_BASE}/api/instagram/status`);
+                const data = await res.json();
+                igStatus = { connected: !!data.connected, username: data.username || null };
+            } catch (e) {
+                igStatus = { connected: false, username: null };
+                if (textEl) textEl.textContent = 'Não foi possível verificar a conexão agora.';
+                updateInstagramPublishSection();
+                return;
+            }
+            if (textEl) {
+                textEl.textContent = igStatus.connected
+                    ? `Conectado: @${igStatus.username || 'conta do Instagram'}`
+                    : 'Instagram não configurado no servidor.';
+            }
+            updateInstagramPublishSection();
+        }
+
+        // ---------- Instagram: publish section inside the card modal ----------
+        function updateInstagramPublishSection() {
+            const section = document.getElementById('instagramPublishSection');
+            if (!section) return;
+            const media = currentAttachments
+                .map((a, i) => ({ ...a, _idx: i }))
+                .filter(a => (a.type || '').startsWith('image/') || (a.type || '').startsWith('video/'));
+
+            if (media.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+            section.classList.remove('hidden');
+
+            const notConnected = document.getElementById('igPublishNotConnected');
+            const controls = document.getElementById('igPublishControls');
+            if (igStatus.connected) {
+                notConnected.classList.add('hidden');
+                controls.classList.remove('hidden');
+                const sel = document.getElementById('igMediaAttachment');
+                sel.innerHTML = media.map(m => `<option value="${m._idx}">${m.name}</option>`).join('');
+                updateInstagramMediaTypeOptions();
+            } else {
+                notConnected.classList.remove('hidden');
+                controls.classList.add('hidden');
+            }
+        }
+
+        function updateInstagramMediaTypeOptions() {
+            const idx = parseInt(document.getElementById('igMediaAttachment').value, 10);
+            const attachment = currentAttachments[idx];
+            const typeSel = document.getElementById('igMediaType');
+            if (!attachment) { typeSel.innerHTML = ''; return; }
+            const isVideo = (attachment.type || '').startsWith('video/');
+            typeSel.innerHTML = isVideo
+                ? `<option value="REELS">Reels (vídeo)</option><option value="STORIES">Stories (vídeo)</option>`
+                : `<option value="IMAGE">Foto (feed)</option><option value="STORIES">Stories (foto)</option>`;
+        }
+
+        async function waitForInstagramContainer(creationId, statusEl) {
+            const maxTries = 40; // ~2 minutes at 3s intervals — plenty for photos, generous for Reels processing
+            for (let i = 0; i < maxTries; i++) {
+                const res = await fetch(`${IG_API_BASE}/api/instagram/container-status?creationId=${encodeURIComponent(creationId)}`);
+                const data = await res.json();
+                if (!res.ok || data.error) throw new Error((data && data.error) || 'Falha ao checar status.');
+                if (data.statusCode === 'FINISHED') return;
+                if (data.statusCode === 'ERROR' || data.statusCode === 'EXPIRED') {
+                    throw new Error('O Instagram não conseguiu processar a mídia (status: ' + data.statusCode + ').');
+                }
+                if (statusEl) statusEl.textContent = 'Processando mídia no Instagram... (' + (i + 1) + ')';
+                await new Promise(r => setTimeout(r, 3000));
+            }
+            throw new Error('Tempo esgotado esperando o Instagram processar a mídia.');
+        }
+
+        async function publishToInstagram() {
+            const idx = parseInt(document.getElementById('igMediaAttachment').value, 10);
+            const attachment = currentAttachments[idx];
+            const mediaType = document.getElementById('igMediaType').value;
+            const statusEl = document.getElementById('igPublishStatus');
+            const btn = document.getElementById('igPublishBtn');
+            if (!attachment || !attachment.file) {
+                statusEl.textContent = 'Selecione uma mídia válida.';
+                statusEl.style.color = '#c9372c';
+                return;
+            }
+
+            const caption = document.getElementById('postCaption').value;
+
+            btn.disabled = true;
+            statusEl.style.color = 'var(--text-secondary)';
+
+            try {
+                btn.textContent = 'Enviando mídia...';
+                statusEl.textContent = 'Enviando mídia para o armazenamento gratuito...';
+                const form = new FormData();
+                form.append('media', attachment.file, attachment.name);
+                const uploadRes = await fetch(`${IG_API_BASE}/api/instagram/upload-media`, { method: 'POST', body: form });
+                const uploadData = await uploadRes.json();
+                if (!uploadRes.ok || uploadData.error) {
+                    throw new Error((uploadData && uploadData.error) || 'Falha ao enviar a mídia.');
+                }
+
+                btn.textContent = 'Criando publicação...';
+                statusEl.textContent = 'Criando a publicação no Instagram...';
+                const containerRes = await fetch(`${IG_API_BASE}/api/instagram/create-container`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mediaUrl: uploadData.url, mediaType, caption })
+                });
+                const containerData = await containerRes.json();
+                if (!containerRes.ok || containerData.error) {
+                    throw new Error((containerData && containerData.error) || 'Falha ao criar a publicação.');
+                }
+
+                btn.textContent = 'Processando...';
+                await waitForInstagramContainer(containerData.creationId, statusEl);
+
+                btn.textContent = 'Publicando...';
+                statusEl.textContent = 'Publicando no Instagram...';
+                const publishRes = await fetch(`${IG_API_BASE}/api/instagram/publish`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ creationId: containerData.creationId })
+                });
+                const publishData = await publishRes.json();
+                if (!publishRes.ok || publishData.error) {
+                    throw new Error((publishData && publishData.error) || 'Falha ao publicar.');
+                }
+
+                statusEl.innerHTML = publishData.permalink
+                    ? `Publicado! <a href="${publishData.permalink}" target="_blank" rel="noopener" class="underline font-semibold">Ver no Instagram</a>`
+                    : 'Publicado no Instagram!';
+                statusEl.style.color = 'var(--accent)';
+
+                // Best-effort cleanup: the media only needed to be public long enough
+                // for Instagram to fetch it, so free up the R2 quota now.
+                fetch(`${IG_API_BASE}/media/${encodeURIComponent(uploadData.key)}`, { method: 'DELETE' }).catch(() => {});
+            } catch (err) {
+                statusEl.textContent = 'Erro: ' + err.message;
+                statusEl.style.color = '#c9372c';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Publicar no Instagram';
             }
         }
 
