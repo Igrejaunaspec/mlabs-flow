@@ -1451,6 +1451,7 @@
             renderCalendar();
             renderAnalytics();
             updateKPIs();
+            loadRealMetrics();
         }
 
         function logout() {
@@ -1619,6 +1620,7 @@
             renderAnalytics();
             renderIdeas();
             updateKPIs();
+            loadRealMetrics();
 
             // YouTube connection: check status + handle the redirect back from Google
             checkYoutubeStatus();
@@ -1653,6 +1655,7 @@
 
             if (tabName === 'analytics') {
                 renderAnalyticsCharts();
+                loadRealMetrics();
             }
         }
 
@@ -2081,11 +2084,82 @@
         function closeDayDetail() {
             document.getElementById('dayDetailModal').classList.add('hidden');
         }
+        // ---------- Real Metrics (Instagram + YouTube) ----------
+        let realMetrics = [];
+        let realMetricsLoaded = false;
+
+        async function loadRealMetrics() {
+            const results = await Promise.allSettled([
+                fetch(`${IG_API_BASE}/api/instagram/recent-media`).then(r => r.json()),
+                fetch(`${YT_API_BASE}/api/youtube/recent-videos`).then(r => r.json())
+            ]);
+
+            const items = [];
+            if (results[0].status === 'fulfilled' && results[0].value && Array.isArray(results[0].value.items)) {
+                results[0].value.items.forEach(m => {
+                    const insights = m.insights || {};
+                    items.push({
+                        channel: 'Instagram',
+                        title: (m.caption || 'Sem legenda').replace(/\n/g, ' ').substring(0, 40),
+                        datetime: m.timestamp || '',
+                        views: insights.plays || insights.reach || 0,
+                        likes: m.like_count || 0,
+                        comments: m.comments_count || 0,
+                        shares: insights.shares || 0,
+                        link: m.permalink || '#'
+                    });
+                });
+            }
+
+            if (results[1].status === 'fulfilled' && results[1].value && Array.isArray(results[1].value.items)) {
+                results[1].value.items.forEach(v => {
+                    items.push({
+                        channel: 'YouTube',
+                        title: (v.title || 'Sem título').substring(0, 40),
+                        datetime: v.publishedAt || '',
+                        views: parseInt(v.viewCount, 10) || 0,
+                        likes: parseInt(v.likeCount, 10) || 0,
+                        comments: parseInt(v.commentCount, 10) || 0,
+                        shares: 0,
+                        link: v.id ? `https://www.youtube.com/watch?v=${v.id}` : '#'
+                    });
+                });
+            }
+            items.sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+
+            realMetrics = items;
+            realMetricsLoaded = true;
+
+            renderAnalytics();
+            renderAnalyticsCharts();
+        }
 
         // Render Analytics Tab
         function renderAnalytics() {
             const tbody = document.getElementById('analytics-table-body');
             tbody.innerHTML = '';
+            if (realMetricsLoaded && realMetrics.length > 0) {
+                realMetrics.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50';
+                    tr.innerHTML = `
+                        <td class="p-3 font-semibold text-slate-800">${item.channel}: ${item.title}...</td>
+                        <td class="p-3">${(item.datetime || '').split('T')[0]}</td>
+                        <td class="p-3 font-bold text-indigo-600">${item.views.toLocaleString()}</td>
+                        <td class="p-3 text-emerald-600 font-semibold">${item.likes}</td>
+                        <td class="p-3 text-slate-700">${item.comments}</td>
+                        <td class="p-3 text-slate-700">${item.shares}</td>
+                        <td class="p-3 text-slate-600 italic"><a href="${item.link}" target="_blank" class="underline text-indigo-500">Ver post</a></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                return;
+            }
+            if (realMetricsLoaded && realMetrics.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-3 text-center text-slate-500 italic">Nenhuma métrica real encontrada ainda no Instagram ou YouTube.</td></tr>';
+                return;
+            }
+
 
             const published = posts.filter(p => p.status === 'Publicado' || p.views > 0);
 
@@ -2108,9 +2182,10 @@
         // Render Chart.js Visualizations
         function renderAnalyticsCharts() {
             const published = posts.filter(p => p.views > 0);
-            const labels = published.map(p => `${p.channel} (${p.datetime.split('T')[0]})`);
-            const viewsData = published.map(p => p.views);
-
+            const useReal = realMetricsLoaded && realMetrics.length > 0;
+            const dataset = useReal ? realMetrics : posts.filter(p => p.views > 0);
+            const labels = dataset.map(p => `${p.channel} (${(p.datetime || '').split('T')[0]})`);
+            const viewsData = dataset.map(p => p.views);
             // Chart 1: Bar Chart Views
             const ctxViews = document.getElementById('viewsChart').getContext('2d');
             if (viewsChartInstance) viewsChartInstance.destroy();
@@ -2139,10 +2214,9 @@
             });
 
             // Chart 2: Engagement Breakdown (Doughnut)
-            const totalLikes = published.reduce((acc, p) => acc + p.likes, 0);
-            const totalComments = published.reduce((acc, p) => acc + p.comments, 0);
-            const totalShares = published.reduce((acc, p) => acc + p.shares, 0);
-
+            const totalLikes = dataset.reduce((acc, p) => acc + p.likes, 0);
+            const totalComments = dataset.reduce((acc, p) => acc + p.comments, 0);
+            const totalShares = dataset.reduce((acc, p) => acc + p.shares, 0);
             const ctxEng = document.getElementById('engagementChart').getContext('2d');
             if (engagementChartInstance) engagementChartInstance.destroy();
 
