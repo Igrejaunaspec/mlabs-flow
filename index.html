@@ -1598,7 +1598,10 @@
                 const res = await fetch(`${YT_API_BASE}/api/board`);
                 if (!res.ok) return;
                 const data = await res.json();
-                if (Array.isArray(data.posts) && data.posts.length) {
+                if (Array.isArray(data.posts)) {
+                    // Replace the in-memory sample cards with whatever the server has,
+                    // including an empty board — an empty array here is a real,
+                    // deliberate state (everything was deleted), not "no data yet".
                     posts = data.posts;
                 }
                 if (Array.isArray(data.customColumns)) {
