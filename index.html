@@ -1531,8 +1531,10 @@
 
             if (remembered && remembered.slug) {
                 // Trust the remembered session locally — no need to hit the server
-                // just to re-enter the app on every visit.
-                showApp(remembered);
+                // just to re-enter the app on every visit. We await showApp so the
+                // caller (DOMContentLoaded) doesn't paint stale/sample cards before
+                // the real board has loaded.
+                await showApp(remembered);
                 return;
             }
 
@@ -1614,9 +1616,9 @@
         }
 
         // Initialize App
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             initThemeAndBackground();
-            initAuth();
+            await initAuth();
             loadCustomColumns();
             renderKanbanColumns();
             renderStatusSelectOptions();
