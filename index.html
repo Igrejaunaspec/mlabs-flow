@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <!-- Tailwind CSS (Play CDN) -->
-<script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 
@@ -1573,16 +1573,22 @@
         // spirit as the rest of this free-tools setup. Saves are debounced so
         // fast actions (like a drag) don't fire a request per pixel.
         let boardSyncTimer = null;
-        function syncBoard() {
+        function syncBoard(immediate = false) {
             clearTimeout(boardSyncTimer);
-            boardSyncTimer = setTimeout(() => {
+            const doSync = () => {
                 const customColumns = statuses.filter(s => !DEFAULT_STATUSES.includes(s)).map(s => ({ name: s, color: STAGE_COLOR[s] }));
                 fetch(`${YT_API_BASE}/api/board`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
+                    keepalive: true,
                     body: JSON.stringify({ posts, customColumns, updatedBy: currentUser ? currentUser.name : null })
                 }).catch(() => {});
-            }, 500);
+            };
+            if (immediate) {
+                doSync();
+            } else {
+                boardSyncTimer = setTimeout(doSync, 500);
+            }
         }
 
         async function loadBoardFromServer() {
@@ -2391,7 +2397,7 @@
             renderKanban();
             renderCalendar();
             updateKPIs();
-            syncBoard();
+            syncBoard(true);
         }
 
         // ---------- Link preview (favicon + hostname, clickable) ----------
@@ -2919,7 +2925,7 @@
             renderKanban();
             renderCalendar();
             updateKPIs();
-            syncBoard();
+            syncBoard(true);
         }
 
         // Save Idea
