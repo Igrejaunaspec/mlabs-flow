@@ -686,55 +686,6 @@
                                 </button>
                             </div>
                         </div>
-
-                        <div id="youtubePublishSection" class="hidden rounded-lg p-3 border" style="background:var(--list-bg); border-color:var(--card-border)">
-                            <div class="flex items-center gap-1.5 mb-2">
-                                <svg class="icon w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.5 6.2s-.2-1.6-.9-2.3c-.9-.9-1.9-.9-2.3-1C17.1 2.6 12 2.6 12 2.6h0s-5.1 0-8.3.3c-.4 0-1.4.1-2.3 1-.7.7-.9 2.3-.9 2.3S.2 8.1.2 10v1.9c0 1.9.3 3.8.3 3.8s.2 1.6.9 2.3c.9.9 2 .9 2.5 1 1.8.2 7.7.3 8.1.3 0 0 5.1 0 8.3-.3.4 0 1.4-.1 2.3-1 .7-.7.9-2.3.9-2.3s.3-1.9.3-3.8V10c0-1.9-.3-3.8-.3-3.8z"/><path d="M9.7 14.1V7.6l5.7 3.3-5.7 3.2z" fill="#fff"/></svg>
-                                <span class="text-xs font-bold" style="color:var(--text-primary)">Publicar no YouTube</span>
-                            </div>
-                            <div id="ytPublishNotConnected" class="hidden text-[11px]" style="color:var(--text-secondary)">Conecte sua conta do YouTube no menu do quadro (ícone "Mostrar Menu") para publicar por aqui.</div>
-                            <div id="ytPublishControls" class="hidden space-y-2">
-                                <div>
-                                    <label class="block text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Vídeo a publicar</label>
-                                    <select id="ytVideoAttachment" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)"></select>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Visibilidade</label>
-                                    <select id="ytPrivacyStatus" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)">
-                                        <option value="private">Privado</option>
-                                        <option value="unlisted">Não listado</option>
-                                        <option value="public">Público</option>
-                                    </select>
-                                </div>
-                                <label class="flex items-center gap-1.5 text-[11px]" style="color:var(--text-secondary)">
-                                    <input type="checkbox" id="ytScheduleCheckbox" checked>
-                                    Agendar publicação para a Data e Hora do cartão (o YouTube publica sozinho na hora certa)
-                                </label>
-                                <button type="button" onclick="publishVideoToYoutube()" id="ytPublishBtn" class="w-full text-xs font-bold py-2 rounded-lg transition" style="background:#FF0000; color:#fff">Enviar vídeo para o YouTube</button>
-                                <p id="ytPublishStatus" class="text-[11px]"></p>
-                            </div>
-                        </div>
-
-                        <div id="instagramPublishSection" class="hidden rounded-lg p-3 border" style="background:var(--list-bg); border-color:var(--card-border)">
-                            <div class="flex items-center gap-1.5 mb-2">
-                                <svg class="icon w-4 h-4 shrink-0" viewBox="0 0 24 24"><defs><radialGradient id="igGradCard" cx="30%" cy="107%" r="150%"><stop offset="0%" stop-color="#fdf497"/><stop offset="5%" stop-color="#fdf497"/><stop offset="45%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient></defs><rect width="24" height="24" rx="6" fill="url(#igGradCard)"/><path d="M12 7.4a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 0 0 0-9.2zm0 7.6a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm4.8-7.8a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0z" fill="#fff"/></svg>
-                                <span class="text-xs font-bold" style="color:var(--text-primary)">Publicar no Instagram</span>
-                            </div>
-                            <div id="igPublishNotConnected" class="hidden text-[11px]" style="color:var(--text-secondary)">Instagram não está configurado no servidor (fale com quem cuida da integração).</div>
-                            <div id="igPublishControls" class="hidden space-y-2">
-                                <div>
-                                    <label class="block text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Mídia a publicar</label>
-                                    <select id="igMediaAttachment" onchange="updateInstagramMediaTypeOptions()" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)"></select>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Tipo de publicação</label>
-                                    <select id="igMediaType" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)"></select>
-                                </div>
-                                <p class="text-[10px]" style="color:var(--text-secondary)">Usa a legenda escrita acima em "Legenda / Descrição". A mídia é enviada para um armazenamento gratuito (Cloudflare R2) só para o Instagram conseguir buscá-la — ela some de lá automaticamente depois.</p>
-                                <button type="button" onclick="publishToInstagram()" id="igPublishBtn" class="w-full text-xs font-bold py-2 rounded-lg transition" style="background:#d6249f; color:#fff">Publicar no Instagram</button>
-                                <p id="igPublishStatus" class="text-[11px]"></p>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- RIGHT: add + actions -->
@@ -828,6 +779,60 @@
                                 <input type="text" id="postagemCollab" placeholder="@marca1, @especialista" class="w-full text-sm rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 transition" style="border-color:var(--card-border)" oninput="document.getElementById('postCollab').value=this.value; updatePostagemPreview();">
                             </div>
                         </div>
+
+                            <div>
+                                <p class="text-[11px] font-bold uppercase tracking-wider mb-1.5" style="color:var(--text-secondary)">Publicar</p>
+                                <div class="space-y-2">
+                                <div id="youtubePublishSection" class="hidden rounded-lg p-3 border" style="background:var(--list-bg); border-color:var(--card-border)">
+                                                            <div class="flex items-center gap-1.5 mb-2">
+                                                                <svg class="icon w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.5 6.2s-.2-1.6-.9-2.3c-.9-.9-1.9-.9-2.3-1C17.1 2.6 12 2.6 12 2.6h0s-5.1 0-8.3.3c-.4 0-1.4.1-2.3 1-.7.7-.9 2.3-.9 2.3S.2 8.1.2 10v1.9c0 1.9.3 3.8.3 3.8s.2 1.6.9 2.3c.9.9 2 .9 2.5 1 1.8.2 7.7.3 8.1.3 0 0 5.1 0 8.3-.3.4 0 1.4-.1 2.3-1 .7-.7.9-2.3.9-2.3s.3-1.9.3-3.8V10c0-1.9-.3-3.8-.3-3.8z"/><path d="M9.7 14.1V7.6l5.7 3.3-5.7 3.2z" fill="#fff"/></svg>
+                                                                <span class="text-xs font-bold" style="color:var(--text-primary)">Publicar no YouTube</span>
+                                                            </div>
+                                                            <div id="ytPublishNotConnected" class="hidden text-[11px]" style="color:var(--text-secondary)">Conecte sua conta do YouTube no menu do quadro (ícone "Mostrar Menu") para publicar por aqui.</div>
+                                                            <div id="ytPublishControls" class="hidden space-y-2">
+                                                                <div>
+                                                                    <label class="block text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Vídeo a publicar</label>
+                                                                    <select id="ytVideoAttachment" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)"></select>
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Visibilidade</label>
+                                                                    <select id="ytPrivacyStatus" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)">
+                                                                        <option value="private">Privado</option>
+                                                                        <option value="unlisted">Não listado</option>
+                                                                        <option value="public">Público</option>
+                                                                    </select>
+                                                                </div>
+                                                                <label class="flex items-center gap-1.5 text-[11px]" style="color:var(--text-secondary)">
+                                                                    <input type="checkbox" id="ytScheduleCheckbox" checked>
+                                                                    Agendar publicação para a Data e Hora do cartão (o YouTube publica sozinho na hora certa)
+                                                                </label>
+                                                                <button type="button" onclick="publishVideoToYoutube()" id="ytPublishBtn" class="w-full text-xs font-bold py-2 rounded-lg transition" style="background:#FF0000; color:#fff">Enviar vídeo para o YouTube</button>
+                                                                <p id="ytPublishStatus" class="text-[11px]"></p>
+                                                            </div>
+                                                        </div>
+
+                                <div id="instagramPublishSection" class="hidden rounded-lg p-3 border" style="background:var(--list-bg); border-color:var(--card-border)">
+                                                            <div class="flex items-center gap-1.5 mb-2">
+                                                                <svg class="icon w-4 h-4 shrink-0" viewBox="0 0 24 24"><defs><radialGradient id="igGradCard" cx="30%" cy="107%" r="150%"><stop offset="0%" stop-color="#fdf497"/><stop offset="5%" stop-color="#fdf497"/><stop offset="45%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient></defs><rect width="24" height="24" rx="6" fill="url(#igGradCard)"/><path d="M12 7.4a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 0 0 0-9.2zm0 7.6a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm4.8-7.8a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0z" fill="#fff"/></svg>
+                                                                <span class="text-xs font-bold" style="color:var(--text-primary)">Publicar no Instagram</span>
+                                                            </div>
+                                                            <div id="igPublishNotConnected" class="hidden text-[11px]" style="color:var(--text-secondary)">Instagram não está configurado no servidor (fale com quem cuida da integração).</div>
+                                                            <div id="igPublishControls" class="hidden space-y-2">
+                                                                <div>
+                                                                    <label class="block text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Mídia a publicar</label>
+                                                                    <select id="igMediaAttachment" onchange="updateInstagramMediaTypeOptions()" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)"></select>
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Tipo de publicação</label>
+                                                                    <select id="igMediaType" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)"></select>
+                                                                </div>
+                                                                <p class="text-[10px]" style="color:var(--text-secondary)">Usa a legenda escrita acima em "Legenda / Descrição". A mídia é enviada para um armazenamento gratuito (Cloudflare R2) só para o Instagram conseguir buscá-la — ela some de lá automaticamente depois.</p>
+                                                                <button type="button" onclick="publishToInstagram()" id="igPublishBtn" class="w-full text-xs font-bold py-2 rounded-lg transition" style="background:#d6249f; color:#fff">Publicar no Instagram</button>
+                                                                <p id="igPublishStatus" class="text-[11px]"></p>
+                                                            </div>
+                                                        </div>
+                                </div>
+                            </div>
 
                         <!-- RIGHT: live preview using real data -->
                         <div>
