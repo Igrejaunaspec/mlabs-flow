@@ -804,7 +804,16 @@
                             <div>
                                 <label class="block text-xs font-bold mb-1.5" style="color:var(--text-secondary)">Mídia</label>
                                 <div id="postagemMediaList" class="space-y-1.5"></div>
-                                <p class="text-[10px] mt-1" style="color:var(--text-secondary)">Adicione arquivos na aba Briefing — eles aparecem aqui automaticamente.</p>
+                                <div class="flex flex-wrap gap-1.5 mt-1.5">
+                                    <label class="flex items-center justify-center gap-1.5 text-[10px] font-semibold px-2 py-1.5 rounded-lg border cursor-pointer hover:bg-black/5 transition" style="border-color:var(--card-border); color:var(--text-secondary)">
+                                        Adicionar capa
+                                        <input type="file" id="postagemCoverInput" accept="image/*" class="hidden" onchange="handleCoverUpload(event)">
+                                    </label>
+                                    <label class="flex items-center justify-center gap-1.5 text-[10px] font-semibold px-2 py-1.5 rounded-lg border cursor-pointer hover:bg-black/5 transition" style="border-color:var(--card-border); color:var(--text-secondary)">
+                                        Adicionar arquivo
+                                        <input type="file" id="postagemAttachmentsInput" multiple class="hidden" onchange="handleAttachmentUpload(event)">
+                                    </label>
+                                </div>
                             </div>
 
                             <div>
@@ -2582,11 +2591,13 @@ function openModal(postId = null, presetStatus = null) {
             currentCoverUrl = URL.createObjectURL(file);
             e.target.value = '';
             updateCoverPreview();
+         refreshPostagemTab();
         }
 
         function removeCoverImage() {
             currentCoverUrl = '';
             updateCoverPreview();
+         refreshPostagemTab();
         }
 
         function updateCoverPreview() {
@@ -2618,6 +2629,7 @@ function openModal(postId = null, presetStatus = null) {
             renderAttachmentsList();
             updateYoutubePublishSection();
             updateInstagramPublishSection();
+         refreshPostagemTab();
         }
 
         function removeAttachment(i) {
@@ -2625,6 +2637,7 @@ function openModal(postId = null, presetStatus = null) {
             renderAttachmentsList();
             updateYoutubePublishSection();
             updateInstagramPublishSection();
+         refreshPostagemTab();
         }
 
         function renderAttachmentsList() {
