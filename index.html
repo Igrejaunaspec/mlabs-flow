@@ -2999,8 +2999,13 @@ function openModal(postId = null, presetStatus = null) {
         }
 
         async function cancelInstagramSchedule() {
-            if (!currentIgScheduleId) return;
+            if (!currentIgScheduleId) {
+                alert('Não encontrei um agendamento ativo para cancelar. Feche e reabra o cartão e tente de novo.');
+                return;
+            }
             if (!confirm('Cancelar este agendamento do Instagram?')) return;
+            const cancelBtn = document.getElementById('igCancelScheduleBtn');
+            if (cancelBtn) { cancelBtn.disabled = true; cancelBtn.textContent = 'Cancelando...'; }
             try {
                 const res = await fetch(`${IG_API_BASE}/api/instagram/schedule-cancel`, {
                     method: 'POST',
@@ -3009,10 +3014,13 @@ function openModal(postId = null, presetStatus = null) {
                 });
                 const data = await res.json();
                 if (!res.ok || data.error) throw new Error((data && data.error) || 'Falha ao cancelar.');
-                document.getElementById('igScheduleInfo').classList.add('hidden');
+                const infoText = document.getElementById('igScheduleInfoText');
+                if (infoText) infoText.textContent = 'Agendamento cancelado com sucesso.';
+                if (cancelBtn) cancelBtn.classList.add('hidden');
                 currentIgScheduleId = null;
             } catch (e) {
                 alert('Erro ao cancelar: ' + e.message);
+                if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.textContent = 'Cancelar agendamento'; }
             }
         }
 
@@ -3056,6 +3064,10 @@ function openModal(postId = null, presetStatus = null) {
                     return;
                 }
                 scheduledIso = new Date(datetime).toISOString();
+                if (new Date(scheduledIso).getTime() <= Date.now()) {
+                    const ok = confirm('A Data e Hora escolhida já passou (' + new Date(scheduledIso).toLocaleString('pt-BR') + '). Isso vai publicar quase imediatamente. Continuar mesmo assim?');
+                    if (!ok) return;
+                }
             }
 
             const caption = document.getElementById('postCaption').value;
