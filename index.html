@@ -825,6 +825,14 @@
                                                                     <select id="igMediaType" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)"></select>
                                                                 </div>
                                                                 <p class="text-[10px]" style="color:var(--text-secondary)">Usa a legenda escrita acima em "Legenda / Descrição". A mídia é enviada para um armazenamento gratuito (Cloudflare R2) só para o Instagram conseguir buscá-la — ela some de lá automaticamente depois.</p>
+                                                                <label class="flex items-center gap-1.5 text-[11px]" style="color:var(--text-secondary)">
+                                                                    <input type="checkbox" id="igScheduleCheckbox" onchange="updateIgPublishBtnLabel()">
+                                                                    Agendar para a Data e Hora do cartão (publica sozinho na hora certa, mesmo com o app fechado)
+                                                                </label>
+                                                                <div id="igScheduleInfo" class="hidden text-[11px] rounded-lg p-2" style="background:var(--card-bg); border:1px solid var(--card-border)">
+                                                                    <p id="igScheduleInfoText" style="color:var(--text-secondary)"></p>
+                                                                    <button type="button" onclick="cancelInstagramSchedule()" id="igCancelScheduleBtn" class="hidden mt-1 text-[11px] font-semibold underline" style="color:#c9372c">Cancelar agendamento</button>
+                                                                </div>
                                                                 <button type="button" onclick="publishToInstagram()" id="igPublishBtn" class="w-full text-xs font-bold py-2 rounded-lg transition" style="background:#d6249f; color:#fff">Publicar no Instagram</button>
                                                                 <p id="igPublishStatus" class="text-[11px]"></p>
                                                             </div>
@@ -2929,6 +2937,8 @@ function openModal(postId = null, presetStatus = null) {
                 const sel = document.getElementById('igMediaAttachment');
                 sel.innerHTML = media.map(m => `<option value="${m._idx}">${m.name}</option>`).join('');
                 updateInstagramMediaTypeOptions();
+                updateIgPublishBtnLabel();
+                checkInstagramScheduleStatus(document.getElementById('postId').value);
             } else {
                 notConnected.classList.remove('hidden');
                 controls.classList.add('hidden');
@@ -2944,6 +2954,66 @@ function openModal(postId = null, presetStatus = null) {
             typeSel.innerHTML = isVideo
                 ? `<option value="REELS">Reels (vídeo)</option><option value="STORIES">Stories (vídeo)</option>`
                 : `<option value="IMAGE">Foto (feed)</option><option value="STORIES">Stories (foto)</option>`;
+        }
+
+        function updateIgPublishBtnLabel() {
+            const btn = document.getElementById('igPublishBtn');
+            const cb = document.getElementById('igScheduleCheckbox');
+            if (!btn || !cb) return;
+            btn.textContent = cb.checked ? 'Agendar no Instagram' : 'Publicar no Instagram';
+        }
+
+        let currentIgScheduleId = null;
+
+        async function checkInstagramScheduleStatus(postId) {
+            const infoBox = document.getElementById('igScheduleInfo');
+            const infoText = document.getElementById('igScheduleInfoText');
+            const cancelBtn = document.getElementById('igCancelScheduleBtn');
+            if (!infoBox) return;
+            if (!postId) { infoBox.classList.add('hidden'); currentIgScheduleId = null; return; }
+            try {
+                const res = await fetch(`${IG_API_BASE}/api/instagram/schedule-status?postId=${encodeURIComponent(postId)}`);
+                const data = await res.json();
+                if (!data.scheduled) { infoBox.classList.add('hidden'); currentIgScheduleId = null; return; }
+                currentIgScheduleId = data.scheduleId;
+                const when = new Date(data.scheduledAt).toLocaleString('pt-BR');
+                if (data.status === 'pending' || data.status === 'creating') {
+                    infoText.textContent = 'Agendado para ' + when + '.';
+                    cancelBtn.classList.toggle('hidden', data.status !== 'pending');
+                } else if (data.status === 'published') {
+                    infoText.innerHTML = data.permalink
+                        ? `Publicado (agendado)! <a href="${data.permalink}" target="_blank" rel="noopener" class="underline font-semibold">Ver no Instagram</a>`
+                        : 'Publicado no Instagram (agendado)!';
+                    cancelBtn.classList.add('hidden');
+                } else if (data.status === 'failed') {
+                    infoText.textContent = 'Falha ao publicar o agendamento: ' + (data.error || 'erro desconhecido');
+                    cancelBtn.classList.add('hidden');
+                } else {
+                    infoBox.classList.add('hidden');
+                    return;
+                }
+                infoBox.classList.remove('hidden');
+            } catch (e) {
+                infoBox.classList.add('hidden');
+            }
+        }
+
+        async function cancelInstagramSchedule() {
+            if (!currentIgScheduleId) return;
+            if (!confirm('Cancelar este agendamento do Instagram?')) return;
+            try {
+                const res = await fetch(`${IG_API_BASE}/api/instagram/schedule-cancel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scheduleId: currentIgScheduleId })
+                });
+                const data = await res.json();
+                if (!res.ok || data.error) throw new Error((data && data.error) || 'Falha ao cancelar.');
+                document.getElementById('igScheduleInfo').classList.add('hidden');
+                currentIgScheduleId = null;
+            } catch (e) {
+                alert('Erro ao cancelar: ' + e.message);
+            }
         }
 
         async function waitForInstagramContainer(creationId, statusEl) {
@@ -2968,13 +3038,28 @@ function openModal(postId = null, presetStatus = null) {
             const mediaType = document.getElementById('igMediaType').value;
             const statusEl = document.getElementById('igPublishStatus');
             const btn = document.getElementById('igPublishBtn');
+            const scheduling = document.getElementById('igScheduleCheckbox').checked;
             if (!attachment || !attachment.file) {
                 statusEl.textContent = 'Selecione uma mídia válida.';
                 statusEl.style.color = '#c9372c';
                 return;
             }
 
+            let scheduledIso = null;
+            if (scheduling) {
+                const datetime = document.getElementById('postDatetime').value;
+                if (!datetime) {
+                    switchPostModalTab('postagem');
+                    const dtEl = document.getElementById('postDatetime');
+                    if (dtEl) dtEl.focus();
+                    alert('Por favor, preencha a Data e Hora da Postagem.');
+                    return;
+                }
+                scheduledIso = new Date(datetime).toISOString();
+            }
+
             const caption = document.getElementById('postCaption').value;
+            const postId = document.getElementById('postId').value || null;
 
             btn.disabled = true;
             statusEl.style.color = 'var(--text-secondary)';
@@ -2988,6 +3073,24 @@ function openModal(postId = null, presetStatus = null) {
                 const uploadData = await uploadRes.json();
                 if (!uploadRes.ok || uploadData.error) {
                     throw new Error((uploadData && uploadData.error) || 'Falha ao enviar a mídia.');
+                }
+
+                if (scheduling) {
+                    btn.textContent = 'Agendando...';
+                    statusEl.textContent = 'Agendando publicação...';
+                    const schedRes = await fetch(`${IG_API_BASE}/api/instagram/schedule`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ postId, mediaKey: uploadData.key, mediaUrl: uploadData.url, mediaType, caption, scheduledAt: scheduledIso })
+                    });
+                    const schedData = await schedRes.json();
+                    if (!schedRes.ok || schedData.error) {
+                        throw new Error((schedData && schedData.error) || 'Falha ao agendar.');
+                    }
+                    statusEl.textContent = 'Agendado para ' + new Date(scheduledIso).toLocaleString('pt-BR') + '. Pode fechar o app — a publicação acontece sozinha.';
+                    statusEl.style.color = 'var(--accent)';
+                    checkInstagramScheduleStatus(postId);
+                    return;
                 }
 
                 btn.textContent = 'Criando publicação...';
@@ -3030,7 +3133,7 @@ function openModal(postId = null, presetStatus = null) {
                 statusEl.style.color = '#c9372c';
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Publicar no Instagram';
+                btn.textContent = scheduling ? 'Agendar no Instagram' : 'Publicar no Instagram';
             }
         }
 
