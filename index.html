@@ -629,6 +629,11 @@
 
             <form id="postForm" onsubmit="savePost(event)" class="p-5">
                 <input type="hidden" id="postId">
+                <div class="flex items-center gap-1 mb-4 border-b" style="border-color:var(--card-border)">
+                    <button type="button" id="postModalTabBtnBriefing" onclick="switchPostModalTab('briefing')" class="px-3 py-2 text-xs font-bold border-b-2 transition" style="border-color:var(--accent); color:var(--accent)">Briefing</button>
+                    <button type="button" id="postModalTabBtnPostagem" onclick="switchPostModalTab('postagem')" class="px-3 py-2 text-xs font-bold border-b-2 transition" style="border-color:transparent; color:var(--text-secondary)">Postagem</button>
+                </div>
+                <div id="briefingTabPanel">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 
                     <!-- LEFT: main content -->
@@ -781,6 +786,61 @@
                                 <button type="submit" class="w-full text-xs font-bold py-2 rounded-lg transition" style="background:var(--accent); color:#04241a">Salvar Cartão</button>
                                 <button type="button" onclick="closeModal()" class="w-full text-xs font-semibold py-2 rounded-lg border transition hover:bg-black/5" style="border-color:var(--card-border); color:var(--text-secondary)">Cancelar</button>
                                 <button type="button" id="deletePostBtn" onclick="deletePostFromModal()" class="hidden w-full text-xs font-semibold py-2 rounded-lg transition hover:opacity-90" style="background:#fde2e1; color:#c9372c">Excluir Cartão</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <div id="postagemTabPanel" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <!-- LEFT: composer (Meta Business Suite style) -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold mb-1" style="color:var(--text-secondary)">Postar em</label>
+                                <div id="postagemPostarEm" class="text-sm font-semibold px-3 py-2 rounded-lg border" style="border-color:var(--card-border); background:var(--list-bg); color:var(--text-primary)">—</div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold mb-1.5" style="color:var(--text-secondary)">Mídia</label>
+                                <div id="postagemMediaList" class="space-y-1.5"></div>
+                                <p class="text-[10px] mt-1" style="color:var(--text-secondary)">Adicione arquivos na aba Briefing — eles aparecem aqui automaticamente.</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold mb-1" style="color:var(--text-secondary)">Detalhes do Reel/Carrossel</label>
+                                <p class="text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Título</p>
+                                <div id="postagemTituloDisplay" class="text-sm font-semibold mb-2" style="color:var(--text-primary)">—</div>
+                                <p class="text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Legenda</p>
+                                <textarea id="postagemLegenda" rows="4" placeholder="Escreva a legenda..." class="w-full text-sm rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 transition" style="border-color:var(--card-border)" oninput="document.getElementById('postCaption').value=this.value; updatePostagemPreview();"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold mb-1" style="color:var(--text-secondary)">Colaboração / Parceiros (@)</label>
+                                <input type="text" id="postagemCollab" placeholder="@marca1, @especialista" class="w-full text-sm rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 transition" style="border-color:var(--card-border)" oninput="document.getElementById('postCollab').value=this.value; updatePostagemPreview();">
+                            </div>
+                        </div>
+
+                        <!-- RIGHT: live preview using real data -->
+                        <div>
+                            <label class="block text-xs font-bold mb-1.5" style="color:var(--text-secondary)">Prévia</label>
+                            <div class="rounded-xl border overflow-hidden" style="border-color:var(--card-border)">
+                                <div class="flex items-center gap-2 p-3">
+                                    <div id="postagemPreviewAvatar" class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:#9C8B6E">?</div>
+                                    <div class="min-w-0">
+                                        <p id="postagemPreviewName" class="text-xs font-bold truncate" style="color:var(--text-primary)">—</p>
+                                        <p class="text-[10px]" style="color:var(--text-secondary)">Agora mesmo</p>
+                                    </div>
+                                </div>
+                                <div id="postagemPreviewMedia" class="w-full aspect-square flex items-center justify-center text-xs" style="background:var(--list-bg); color:var(--text-secondary)">Sem mídia</div>
+                                <div class="flex items-center gap-3 px-3 pt-2 text-lg" style="color:var(--text-secondary)">
+                                    <span>♡</span>
+                                    <span>💬</span>
+                                    <span>↗</span>
+                                </div>
+                                <div class="px-3 pb-3 pt-1">
+                                    <p class="text-xs" style="color:var(--text-primary)"><span id="postagemPreviewNameInline" class="font-bold">—</span> <span id="postagemPreviewCaption" style="color:var(--text-secondary)">Sem legenda ainda.</span></p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2331,7 +2391,99 @@
         let currentAttachments = [];
         let currentCoverUrl = '';
 
-        function openModal(postId = null, presetStatus = null) {
+                // ---------- Postagem tab (Meta-style composer + live preview) ----------
+        function switchPostModalTab(tab) {
+            const briefingPanel = document.getElementById('briefingTabPanel');
+            const postagemPanel = document.getElementById('postagemTabPanel');
+            const briefingBtn = document.getElementById('postModalTabBtnBriefing');
+            const postagemBtn = document.getElementById('postModalTabBtnPostagem');
+            if (!briefingPanel || !postagemPanel) return;
+            const isPostagem = tab === 'postagem';
+            briefingPanel.classList.toggle('hidden', isPostagem);
+            postagemPanel.classList.toggle('hidden', !isPostagem);
+            if (briefingBtn) {
+                briefingBtn.style.borderColor = isPostagem ? 'transparent' : 'var(--accent)';
+                briefingBtn.style.color = isPostagem ? 'var(--text-secondary)' : 'var(--accent)';
+            }
+            if (postagemBtn) {
+                postagemBtn.style.borderColor = isPostagem ? 'var(--accent)' : 'transparent';
+                postagemBtn.style.color = isPostagem ? 'var(--accent)' : 'var(--text-secondary)';
+            }
+            if (isPostagem) refreshPostagemTab();
+        }
+
+        function refreshPostagemTab() {
+            const captionEl = document.getElementById('postCaption');
+            const collabEl = document.getElementById('postCollab');
+            const legendaEl = document.getElementById('postagemLegenda');
+            const collabMirrorEl = document.getElementById('postagemCollab');
+            if (legendaEl) legendaEl.value = captionEl ? captionEl.value : '';
+            if (collabMirrorEl) collabMirrorEl.value = collabEl ? collabEl.value : '';
+
+            const titleEl = document.getElementById('postTitle');
+            const tituloDisplay = document.getElementById('postagemTituloDisplay');
+            if (tituloDisplay) tituloDisplay.textContent = (titleEl && titleEl.value.trim()) ? titleEl.value.trim() : 'Sem título ainda';
+
+            const channelEl = document.getElementById('postChannel');
+            const postarEmEl = document.getElementById('postagemPostarEm');
+            if (postarEmEl) postarEmEl.textContent = (channelEl && channelEl.value) ? channelEl.value : '—';
+
+            renderPostagemMedia();
+            updatePostagemPreview();
+        }
+
+        function renderPostagemMedia() {
+            const list = document.getElementById('postagemMediaList');
+            if (!list) return;
+            const items = [];
+            if (currentCoverUrl) items.push({ url: currentCoverUrl, name: 'Capa', isImage: true, isVideo: false });
+            (currentAttachments || []).forEach(att => {
+                items.push({ url: att.url, name: att.name, isImage: (att.type || '').startsWith('image/'), isVideo: (att.type || '').startsWith('video/') });
+            });
+            if (!items.length) {
+                list.innerHTML = '<p class="text-xs" style="color:var(--text-secondary)">Nenhum arquivo anexado ainda — adicione na aba Briefing.</p>';
+                return;
+            }
+            list.innerHTML = items.map(it => `
+                <div class="flex items-center gap-2 px-2 py-1.5 rounded-lg border text-xs" style="border-color:var(--card-border)">
+                    <span class="flex-shrink-0">${it.isVideo ? '🎬' : (it.isImage ? '🖼️' : '📄')}</span>
+                    <span class="flex-1 min-w-0 truncate" style="color:var(--text-primary)">${it.name}</span>
+                    <a href="${it.url}" download="${it.name}" class="flex-shrink-0 font-semibold" style="color:var(--accent)">Baixar</a>
+                    ${it.isImage || it.isVideo ? `<a href="${it.url}" target="_blank" rel="noopener" class="flex-shrink-0 font-semibold" style="color:var(--accent)">Ver</a>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function updatePostagemPreview() {
+            const nameEl = document.getElementById('postResponsible');
+            const name = (nameEl && nameEl.value && nameEl.selectedOptions[0]) ? nameEl.selectedOptions[0].textContent : '';
+            const avatarEl = document.getElementById('postagemPreviewAvatar');
+            if (avatarEl) avatarEl.textContent = (name && name[0]) ? name[0].toUpperCase() : '?';
+            const nameDisplayEl = document.getElementById('postagemPreviewName');
+            if (nameDisplayEl) nameDisplayEl.textContent = name || '—';
+            const nameInlineEl = document.getElementById('postagemPreviewNameInline');
+            if (nameInlineEl) nameInlineEl.textContent = name || '—';
+
+            const mediaEl = document.getElementById('postagemPreviewMedia');
+            if (mediaEl) {
+                if (currentCoverUrl) {
+                    mediaEl.innerHTML = `<img src="${currentCoverUrl}" class="w-full h-full object-cover" alt="Prévia da mídia">`;
+                } else if (currentAttachments && currentAttachments.length && (currentAttachments[0].type || '').startsWith('image/')) {
+                    mediaEl.innerHTML = `<img src="${currentAttachments[0].url}" class="w-full h-full object-cover" alt="Prévia da mídia">`;
+                } else if (currentAttachments && currentAttachments.length && (currentAttachments[0].type || '').startsWith('video/')) {
+                    mediaEl.innerHTML = `<video src="${currentAttachments[0].url}" class="w-full h-full object-cover" muted></video>`;
+                } else {
+                    mediaEl.textContent = 'Sem mídia';
+                }
+            }
+
+            const captionEl = document.getElementById('postCaption');
+            const captionPreviewEl = document.getElementById('postagemPreviewCaption');
+            if (captionPreviewEl) captionPreviewEl.textContent = (captionEl && captionEl.value.trim()) ? captionEl.value.trim() : 'Sem legenda ainda.';
+        }
+
+function openModal(postId = null, presetStatus = null) {
+            switchPostModalTab('briefing');
             const modal = document.getElementById('postModal');
             const form = document.getElementById('postForm');
             form.reset();
@@ -2386,6 +2538,7 @@
             updateInstagramPublishSection();
             modal.classList.remove('hidden');
             setTimeout(() => titleInput.focus(), 30);
+            refreshPostagemTab();
         }
 
         function updateModalCover() {
