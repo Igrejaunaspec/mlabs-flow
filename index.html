@@ -429,6 +429,7 @@
                             <option value="all">Todos os Canais</option>
                             <option value="IG - Reels">Instagram Reels</option>
                             <option value="YT - Shorts">YouTube Shorts</option>
+                            <option value="IG + YT">Instagram + YouTube</option>
                             <option value="IG - Carrossel">Instagram Carrossel</option>
                             <option value="YT - Vídeo Longo">YouTube Longo</option>
                         </select>
@@ -643,6 +644,7 @@
                             <select id="postChannel" required onchange="updateModalCover()" class="w-full text-xs rounded-lg p-2.5 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)">
                                 <option value="IG - Reels">IG - Reels</option>
                                 <option value="YT - Shorts">YT - Shorts</option>
+                                <option value="IG + YT">IG Reels + YT Shorts</option>
                                 <option value="IG - Carrossel">IG - Carrossel</option>
                                 <option value="YT - Vídeo Longo">YT - Vídeo Longo</option>
                             </select>
@@ -929,6 +931,7 @@
                     <select id="ideaChannel" class="w-full text-xs border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500">
                         <option value="IG - Reels">IG - Reels</option>
                         <option value="YT - Shorts">YT - Shorts</option>
+                                <option value="IG + YT">IG Reels + YT Shorts</option>
                         <option value="Qualquer Formato">Qualquer Formato</option>
                     </select>
                 </div>
@@ -1946,6 +1949,7 @@
                     let badgeColor = 'bg-slate-200 text-slate-800';
                     if (post.channel.includes('IG')) badgeColor = 'bg-gradient-to-r from-pink-500 to-purple-500 text-white';
                     if (post.channel.includes('YT')) badgeColor = 'bg-red-600 text-white';
+                    if (post.channel.includes('IG') && post.channel.includes('YT')) badgeColor = 'bg-gradient-to-r from-pink-500 to-red-600 text-white';
 
                     let dateBadgeClass = 'date-badge-normal';
                     if (post.status === 'Publicado') {
