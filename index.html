@@ -781,6 +781,43 @@
                                                     <div>
                                 <p class="text-[11px] font-bold uppercase tracking-wider mb-1.5" style="color:var(--text-secondary)">Publicar</p>
                                 <div class="space-y-2">
+                                <div id="bothPublishSection" class="hidden rounded-lg p-3 border-2" style="background:var(--list-bg); border-color:var(--accent)">
+                                    <div class="flex items-center gap-1.5 mb-2">
+                                        <span class="text-xs font-bold" style="color:var(--text-primary)">Publicar no YouTube + Instagram</span>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div>
+                                            <label class="block text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Vídeo</label>
+                                            <select id="bothVideoAttachment" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)"></select>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label class="block text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">YouTube: visibilidade</label>
+                                                <select id="bothPrivacyStatus" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)">
+                                                    <option value="public">Público</option>
+                                                    <option value="unlisted">Não listado</option>
+                                                    <option value="private">Privado</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-[10px] font-semibold mb-1" style="color:var(--text-secondary)">Instagram: tipo</label>
+                                                <select id="bothIgType" class="w-full text-xs rounded-lg p-2 border" style="background:var(--card-bg); border-color:var(--card-border); color:var(--text-primary)">
+                                                    <option value="REELS">Reels</option>
+                                                    <option value="STORIES">Stories</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <label class="flex items-center gap-1.5 text-[11px]" style="color:var(--text-secondary)">
+                                            <input type="checkbox" id="bothScheduleCheckbox" checked onchange="updateBothPublishBtnLabel()">
+                                            Agendar nos dois para a Data e Hora do cartão
+                                        </label>
+                                        <p class="text-[10px]" style="color:var(--text-secondary)">O vídeo é enviado uma vez só, em partes (aceita arquivos grandes, 300MB ou mais). Usa o Título e a Legenda do cartão.</p>
+                                        <div class="w-full h-1.5 rounded-full overflow-hidden" style="background:var(--card-border)"><div id="bothProgressBar" class="h-full transition-all" style="width:0%; background:var(--accent)"></div></div>
+                                        <button type="button" onclick="publishToBoth()" id="bothPublishBtn" class="w-full text-xs font-bold py-2 rounded-lg transition" style="background:var(--accent); color:#04241a">Agendar nos dois</button>
+                                        <p id="bothYtStatus" class="text-[11px]"></p>
+                                        <p id="bothIgStatus" class="text-[11px]"></p>
+                                    </div>
+                                </div>
                                 <div id="youtubePublishSection" class="hidden rounded-lg p-3 border" style="background:var(--list-bg); border-color:var(--card-border)">
                                                             <div class="flex items-center gap-1.5 mb-2">
                                                                 <svg class="icon w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.5 6.2s-.2-1.6-.9-2.3c-.9-.9-1.9-.9-2.3-1C17.1 2.6 12 2.6 12 2.6h0s-5.1 0-8.3.3c-.4 0-1.4.1-2.3 1-.7.7-.9 2.3-.9 2.3S.2 8.1.2 10v1.9c0 1.9.3 3.8.3 3.8s.2 1.6.9 2.3c.9.9 2 .9 2.5 1 1.8.2 7.7.3 8.1.3 0 0 5.1 0 8.3-.3.4 0 1.4-.1 2.3-1 .7-.7.9-2.3.9-2.3s.3-1.9.3-3.8V10c0-1.9-.3-3.8-.3-3.8z"/><path d="M9.7 14.1V7.6l5.7 3.3-5.7 3.2z" fill="#fff"/></svg>
@@ -2811,6 +2848,7 @@ function openModal(postId = null, presetStatus = null) {
 
         // ---------- YouTube: publish section inside the card modal ----------
         function updateYoutubePublishSection() {
+            setTimeout(updateBothPublishSection, 0);
             const section = document.getElementById('youtubePublishSection');
             if (!section) return;
             const videos = currentAttachments
@@ -2860,32 +2898,27 @@ function openModal(postId = null, presetStatus = null) {
                 return;
             }
 
-            const form = new FormData();
-            form.append('userId', YT_USER_ID);
-            form.append('title', title);
-            form.append('description', description);
-            form.append('privacyStatus', privacyStatus);
-            if (schedule && datetime) {
-                form.append('publishAt', new Date(datetime).toISOString());
-            }
-            form.append('video', attachment.file, attachment.name);
-
             btn.disabled = true;
             btn.textContent = 'Enviando... isso pode levar alguns minutos';
             statusEl.textContent = '';
+            statusEl.style.color = 'var(--text-secondary)';
 
+            let uploaded = null;
             try {
-                const res = await fetch(`${YT_API_BASE}/api/youtube/upload`, { method: 'POST', body: form });
-                const data = await res.json();
-                if (!res.ok || data.error) {
-                    throw new Error((data && data.error) || 'Falha no envio.');
-                }
+                uploaded = await uploadMediaChunked(attachment.file, (pct) => {
+                    statusEl.textContent = `Enviando vídeo... ${pct}%`;
+                });
+                const data = await sendR2VideoToYoutube(uploaded.key, {
+                    title, description, privacyStatus,
+                    publishAt: (schedule && datetime) ? new Date(datetime).toISOString() : null,
+                }, (pct) => { statusEl.textContent = `Transferindo para o YouTube... ${pct}%`; });
                 statusEl.innerHTML = `Enviado! <a href="${data.url}" target="_blank" rel="noopener" class="underline font-semibold">Ver no YouTube</a>`;
                 statusEl.style.color = 'var(--accent)';
             } catch (err) {
                 statusEl.textContent = 'Erro ao enviar: ' + err.message;
                 statusEl.style.color = '#c9372c';
             } finally {
+                if (uploaded) deleteR2Media(uploaded.key);
                 btn.disabled = false;
                 btn.textContent = 'Enviar vídeo para o YouTube';
             }
@@ -2917,6 +2950,7 @@ function openModal(postId = null, presetStatus = null) {
 
         // ---------- Instagram: publish section inside the card modal ----------
         function updateInstagramPublishSection() {
+            setTimeout(updateBothPublishSection, 0);
             const section = document.getElementById('instagramPublishSection');
             if (!section) return;
             const media = currentAttachments
@@ -3025,7 +3059,7 @@ function openModal(postId = null, presetStatus = null) {
         }
 
         async function waitForInstagramContainer(creationId, statusEl) {
-            const maxTries = 40; // ~2 minutes at 3s intervals — plenty for photos, generous for Reels processing
+            const maxTries = 100; // ~5 minutes at 3s intervals — plenty for photos, generous for Reels processing
             for (let i = 0; i < maxTries; i++) {
                 const res = await fetch(`${IG_API_BASE}/api/instagram/container-status?creationId=${encodeURIComponent(creationId)}`);
                 const data = await res.json();
@@ -3079,13 +3113,9 @@ function openModal(postId = null, presetStatus = null) {
             try {
                 btn.textContent = 'Enviando mídia...';
                 statusEl.textContent = 'Enviando mídia para o armazenamento gratuito...';
-                const form = new FormData();
-                form.append('media', attachment.file, attachment.name);
-                const uploadRes = await fetch(`${IG_API_BASE}/api/instagram/upload-media`, { method: 'POST', body: form });
-                const uploadData = await uploadRes.json();
-                if (!uploadRes.ok || uploadData.error) {
-                    throw new Error((uploadData && uploadData.error) || 'Falha ao enviar a mídia.');
-                }
+                const uploadData = await uploadMediaChunked(attachment.file, (pct) => {
+                    statusEl.textContent = `Enviando mídia... ${pct}%`;
+                });
 
                 if (scheduling) {
                     btn.textContent = 'Agendando...';
@@ -3146,6 +3176,231 @@ function openModal(postId = null, presetStatus = null) {
             } finally {
                 btn.disabled = false;
                 btn.textContent = scheduling ? 'Agendar no Instagram' : 'Publicar no Instagram';
+            }
+        }
+
+        // ---------- Upload grande em partes (sem limite de 100MB) ----------
+        async function apiJson(path, options) {
+            const res = await fetch(`${YT_API_BASE}${path}`, options);
+            let data = null;
+            try { data = await res.json(); } catch (e) {}
+            if (!res.ok || !data || data.error) {
+                throw new Error((data && data.error) || `Falha na requisição (${res.status}).`);
+            }
+            return data;
+        }
+
+        // Envia o arquivo para o R2 em partes de ~50MB. Devolve { key, url }.
+        async function uploadMediaChunked(file, onProgress) {
+            const start = await apiJson('/api/media/multipart/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileName: file.name, contentType: file.type, size: file.size })
+            });
+            const { key, uploadId, partSize } = start;
+            const totalParts = Math.max(1, Math.ceil(file.size / partSize));
+            const parts = [];
+            try {
+                for (let i = 0; i < totalParts; i++) {
+                    const blob = file.slice(i * partSize, Math.min(file.size, (i + 1) * partSize));
+                    let lastErr = null;
+                    for (let attempt = 1; attempt <= 3; attempt++) {
+                        try {
+                            const part = await apiJson(`/api/media/multipart/part?key=${encodeURIComponent(key)}&uploadId=${encodeURIComponent(uploadId)}&partNumber=${i + 1}`, {
+                                method: 'PUT', body: blob
+                            });
+                            parts.push({ partNumber: part.partNumber, etag: part.etag });
+                            lastErr = null;
+                            break;
+                        } catch (e) {
+                            lastErr = e;
+                            await new Promise(r => setTimeout(r, 2000 * attempt));
+                        }
+                    }
+                    if (lastErr) throw lastErr;
+                    if (onProgress) onProgress(Math.round(((i + 1) / totalParts) * 100));
+                }
+                return await apiJson('/api/media/multipart/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, uploadId, parts })
+                });
+            } catch (err) {
+                fetch(`${YT_API_BASE}/api/media/multipart/abort`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, uploadId })
+                }).catch(() => {});
+                throw err;
+            }
+        }
+
+        // Copia um vídeo que já está no R2 para o YouTube, em pedaços. Devolve { videoId, url }.
+        async function sendR2VideoToYoutube(key, meta, onProgress) {
+            const start = await apiJson('/api/youtube/resumable/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: YT_USER_ID, key, ...meta })
+            });
+            let failures = 0;
+            while (true) {
+                try {
+                    const step = await apiJson('/api/youtube/resumable/transfer', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionUrl: start.sessionUrl, key })
+                    });
+                    failures = 0;
+                    if (step.done) return step;
+                    if (onProgress) onProgress(Math.round((step.nextOffset / step.size) * 100));
+                } catch (e) {
+                    failures++;
+                    if (failures >= 3) throw e;
+                    await new Promise(r => setTimeout(r, 3000 * failures));
+                }
+            }
+        }
+
+        function deleteR2Media(key) {
+            fetch(`${YT_API_BASE}/media/${encodeURIComponent(key)}`, { method: 'DELETE' }).catch(() => {});
+        }
+
+        // ---------- Publicar nos dois (YouTube + Instagram) ----------
+        function updateBothPublishSection() {
+            const section = document.getElementById('bothPublishSection');
+            if (!section) return;
+            const videos = currentAttachments
+                .map((a, i) => ({ ...a, _idx: i }))
+                .filter(a => (a.type || '').startsWith('video/') && a.file);
+            const ready = videos.length > 0 && ytStatus && ytStatus.connected && igStatus && igStatus.connected;
+            section.classList.toggle('hidden', !ready);
+            if (!ready) return;
+            const sel = document.getElementById('bothVideoAttachment');
+            const prev = sel.value;
+            sel.innerHTML = videos.map(v => `<option value="${v._idx}">${v.name}</option>`).join('');
+            if (prev && videos.some(v => String(v._idx) === prev)) sel.value = prev;
+            updateBothPublishBtnLabel();
+        }
+
+        function updateBothPublishBtnLabel() {
+            const btn = document.getElementById('bothPublishBtn');
+            const cb = document.getElementById('bothScheduleCheckbox');
+            if (!btn || !cb || btn.disabled) return;
+            btn.textContent = cb.checked ? 'Agendar nos dois' : 'Publicar nos dois agora';
+        }
+
+        async function publishToBoth() {
+            const idx = parseInt(document.getElementById('bothVideoAttachment').value, 10);
+            const attachment = currentAttachments[idx];
+            const btn = document.getElementById('bothPublishBtn');
+            const bar = document.getElementById('bothProgressBar');
+            const ytEl = document.getElementById('bothYtStatus');
+            const igEl = document.getElementById('bothIgStatus');
+            const scheduling = document.getElementById('bothScheduleCheckbox').checked;
+            const privacyStatus = document.getElementById('bothPrivacyStatus').value;
+            const igType = document.getElementById('bothIgType').value;
+            const setStatus = (el, text, color) => { el.textContent = text; el.style.color = color || 'var(--text-secondary)'; };
+
+            if (!attachment || !attachment.file) {
+                setStatus(ytEl, 'Selecione um vídeo válido.', '#c9372c');
+                return;
+            }
+            const title = document.getElementById('postTitle').value.trim() || 'Sem título';
+            const caption = document.getElementById('postCaption').value;
+            const postId = document.getElementById('postId').value || null;
+
+            let scheduledIso = null;
+            if (scheduling) {
+                const datetime = document.getElementById('postDatetime').value;
+                if (!datetime) {
+                    switchPostModalTab('postagem');
+                    const dtEl = document.getElementById('postDatetime');
+                    if (dtEl) dtEl.focus();
+                    alert('Por favor, preencha a Data e Hora da Postagem.');
+                    return;
+                }
+                scheduledIso = new Date(datetime).toISOString();
+                if (new Date(scheduledIso).getTime() <= Date.now() + 60000) {
+                    if (!confirm('A Data e Hora escolhida já passou ou é agora. Isso vai publicar quase imediatamente. Continuar?')) return;
+                }
+            }
+            if (!confirm(`Publicar "${attachment.name}" no YouTube e no Instagram${scheduling ? ' (agendado para ' + new Date(scheduledIso).toLocaleString('pt-BR') + ')' : ' agora'}?`)) return;
+
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+            bar.style.width = '0%';
+            setStatus(ytEl, 'YouTube: aguardando envio do vídeo...');
+            setStatus(igEl, 'Instagram: aguardando envio do vídeo...');
+
+            let uploaded = null;
+            let keepMedia = false; // o agendamento do Instagram apaga a mídia sozinho depois de publicar
+            try {
+                // 1) Sobe o vídeo uma vez só (0–50% da barra)
+                uploaded = await uploadMediaChunked(attachment.file, (pct) => {
+                    bar.style.width = (pct / 2) + '%';
+                    setStatus(ytEl, `Enviando vídeo... ${pct}%`);
+                });
+                setStatus(igEl, 'Instagram: vídeo pronto, aguardando o YouTube...');
+
+                // 2) YouTube (50–100% da barra)
+                let ytOk = false;
+                try {
+                    const yt = await sendR2VideoToYoutube(uploaded.key, {
+                        title, description: caption,
+                        privacyStatus: scheduling ? 'private' : privacyStatus,
+                        publishAt: scheduledIso,
+                    }, (pct) => {
+                        bar.style.width = (50 + pct / 2) + '%';
+                        setStatus(ytEl, `YouTube: transferindo... ${pct}%`);
+                    });
+                    ytOk = true;
+                    ytEl.innerHTML = `YouTube: ${scheduling ? 'agendado' : 'enviado'}! <a href="${yt.url}" target="_blank" rel="noopener" class="underline font-semibold">Ver vídeo</a>`;
+                    ytEl.style.color = 'var(--accent)';
+                } catch (e) {
+                    setStatus(ytEl, 'YouTube: erro — ' + e.message, '#c9372c');
+                }
+                bar.style.width = '100%';
+
+                // 3) Instagram
+                try {
+                    if (scheduling) {
+                        await apiJson('/api/instagram/schedule', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ postId, mediaKey: uploaded.key, mediaUrl: uploaded.url, mediaType: igType, caption, scheduledAt: scheduledIso })
+                        });
+                        keepMedia = true;
+                        setStatus(igEl, 'Instagram: agendado para ' + new Date(scheduledIso).toLocaleString('pt-BR') + '.', 'var(--accent)');
+                        checkInstagramScheduleStatus(postId);
+                    } else {
+                        setStatus(igEl, 'Instagram: criando publicação...');
+                        const container = await apiJson('/api/instagram/create-container', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ mediaUrl: uploaded.url, mediaType: igType, caption })
+                        });
+                        await waitForInstagramContainer(container.creationId, igEl);
+                        setStatus(igEl, 'Instagram: publicando...');
+                        const pub = await apiJson('/api/instagram/publish', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ creationId: container.creationId })
+                        });
+                        igEl.innerHTML = pub.permalink
+                            ? `Instagram: publicado! <a href="${pub.permalink}" target="_blank" rel="noopener" class="underline font-semibold">Ver post</a>`
+                            : 'Instagram: publicado!';
+                        igEl.style.color = 'var(--accent)';
+                    }
+                } catch (e) {
+                    setStatus(igEl, 'Instagram: erro — ' + e.message, '#c9372c');
+                }
+                if (!ytOk) setStatus(ytEl, ytEl.textContent + ' (tente de novo só pelo bloco do YouTube)', '#c9372c');
+            } catch (err) {
+                setStatus(ytEl, 'Erro ao enviar o vídeo: ' + err.message, '#c9372c');
+                setStatus(igEl, '');
+            } finally {
+                if (uploaded && !keepMedia) deleteR2Media(uploaded.key);
+                btn.disabled = false;
+                updateBothPublishBtnLabel();
             }
         }
 
