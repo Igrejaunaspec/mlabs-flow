@@ -2532,7 +2532,7 @@
                 } else if (currentAttachments && currentAttachments.length && (currentAttachments[0].type || '').startsWith('image/')) {
                     mediaEl.innerHTML = `<img src="${currentAttachments[0].url}" class="w-full h-full object-cover" alt="Prévia da mídia">`;
                 } else if (currentAttachments && currentAttachments.length && (currentAttachments[0].type || '').startsWith('video/')) {
-                    mediaEl.innerHTML = `<video src="${currentAttachments[0].url}" class="w-full h-full object-cover" muted></video>`;
+                    mediaEl.innerHTML = `<video src="${currentAttachments[0].url}#t=0.1" class="w-full h-full object-cover" muted playsinline preload="metadata" onerror="this.outerHTML='<span class=\\'flex items-center justify-center w-full h-full text-3xl\\'>🎬</span>'"></video>`;
                 } else {
                     mediaEl.textContent = 'Sem mídia';
                 }
